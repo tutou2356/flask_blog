@@ -62,6 +62,7 @@ def delete(id):
     db.session.commit()
     flash(f'"{post.title}" was successfully deleted!')
     return redirect(url_for('index'))
+    print(1)
 
 if __name__ == '__main__':
     app.run(debug=True)
