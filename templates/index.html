@@ -7,18 +7,20 @@
     <div class="space-y-6">
         {% for post in posts %}
             <article class="bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-2xl font-semibold text-slate-800">{{ post.title }}</h2>
-                <div class="prose mt-4 text-slate-600">
-                    {{ post.content | safe }}
+                <!-- ❗️❗️❗️ 升级：标题变为链接 -->
+                <a href="{{ url_for('post', id=post.id) }}">
+                    <h2 class="text-2xl font-semibold text-slate-800 hover:text-indigo-600 transition">{{ post.title }}</h2>
+                </a>
+                <!-- ❗️❗️❗️ 升级：只显示前150个字符作为摘要 -->
+                <div class="prose max-w-none mt-4 text-slate-600">
+                    {{ post.content[:150] | escape }}...
                 </div>
-                <!-- ❗️❗️❗️ 修改开始 -->
                 <div class="mt-4 flex justify-end items-center gap-4">
                     <a href="{{ url_for('edit', id=post.id) }}" class="text-sm text-indigo-600 hover:text-indigo-800">编辑</a>
                     <form action="{{ url_for('delete', id=post.id) }}" method="post">
                         <button type="submit" class="text-sm text-red-500 hover:text-red-700" onclick="return confirm('确定要删除这篇文章吗？');">删除</button>
                     </form>
                 </div>
-                <!-- ❗️❗️❗️ 修改结束 -->
             </article>
         {% else %}
             <p class="text-center text-slate-500">还没有文章，快去写第一篇吧！</p>

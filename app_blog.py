@@ -1,6 +1,10 @@
+# app_blog.py (最终完整版)
+
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
+import markdown
+from markdown.extensions import codehilite
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
@@ -32,6 +36,27 @@ def index():
     posts = Post.query.order_by(Post.id.desc()).all()
     return render_template('index.html', posts=posts)
 
+@app.route('/post/<int:id>')
+def post(id):
+    post = Post.query.get_or_404(id)
+    # 修复：更正确的Python-Markdown配置
+    html_content = markdown.markdown(
+        post.content,
+        extensions=[
+            'markdown.extensions.codehilite',
+            'markdown.extensions.fenced_code',
+            'markdown.extensions.tables'
+        ],
+        extension_configs={
+            'markdown.extensions.codehilite': {
+                'css_class': 'highlight',
+                'use_pygments': True,
+                'noclasses': False
+            }
+        }
+    )
+    return render_template('post.html', post=post, content_html=html_content)
+
 @app.route('/create', methods=('GET', 'POST'))
 def create():
     if request.method == 'POST':
@@ -48,14 +73,11 @@ def create():
 
     return render_template('create.html')
 
-# ❗️❗️❗️ 新增：编辑文章的路由
 @app.route('/<int:id>/edit', methods=('GET', 'POST'))
 def edit(id):
-    # 根据ID获取文章，如果找不到则返回404错误
     post = Post.query.get_or_404(id)
 
     if request.method == 'POST':
-        # 如果是提交表单，则更新数据
         title = request.form['title']
         content = request.form['content']
 
@@ -65,11 +87,9 @@ def edit(id):
             post.title = title
             post.content = content
             db.session.commit()
-            return redirect(url_for('index'))
+            return redirect(url_for('post', id=post.id))
 
-    # 如果是GET请求，则显示带有当前数据的编辑页面
     return render_template('edit.html', post=post)
-
 
 @app.route('/<int:id>/delete', methods=('POST',))
 def delete(id):
