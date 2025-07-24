@@ -1,15 +1,14 @@
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
-# ❗️❗️❗️ 关键修复：确保导入的是 markdown2
-import markdown2
+import markdown  # 使用 markdown，不是 markdown2
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'blog.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'dev' 
+app.config['SECRET_KEY'] = 'dev'
 
 db = SQLAlchemy(app)
 
@@ -27,8 +26,6 @@ def init_db_command():
         db.create_all()
     print('Initialized the database.')
 
-# --- 路由逻辑 ---
-
 @app.route('/')
 def index():
     posts = Post.query.order_by(Post.id.desc()).all()
@@ -37,11 +34,28 @@ def index():
 @app.route('/post/<int:id>')
 def post(id):
     post = Post.query.get_or_404(id)
-    # 启用fenced-code-blocks扩展以支持代码高亮
-    html_content = markdown2.markdown(
-        post.content, 
-        extras=["fenced-code-blocks"]
-    )
+    
+    try:
+        html_content = markdown.markdown(
+            post.content,
+            extensions=[
+                'markdown.extensions.codehilite',
+                'markdown.extensions.fenced_code',
+                'markdown.extensions.tables'
+            ],
+            extension_configs={
+                'markdown.extensions.codehilite': {
+                    'css_class': 'highlight',
+                    'use_pygments': True,
+                    'noclasses': False
+                }
+            }
+        )
+    except Exception as e:
+        print(f"Markdown错误: {e}")
+        # 降级处理
+        html_content = markdown.markdown(post.content)
+    
     return render_template('post.html', post=post, content_html=html_content)
 
 @app.route('/create', methods=('GET', 'POST'))
