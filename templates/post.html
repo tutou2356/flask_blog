@@ -1,0 +1,14 @@
+<!-- templates/post.html -->
+{% extends 'base.html' %}
+
+{% block title %}{{ post.title }}{% endblock %}
+
+{% block content %}
+    <article class="bg-white p-8 rounded-lg shadow-md">
+        <!-- ❗️❗️❗️ 修复：将prose类应用到包含所有内容的父级div上 -->
+        <div class="prose max-w-none">
+            <h1>{{ post.title }}</h1>
+            {{ content_html | safe }}
+        </div>
+    </article>
+{% endblock %}
