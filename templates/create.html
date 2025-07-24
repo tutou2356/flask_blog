@@ -9,12 +9,82 @@
             <label for="title" class="block text-sm font-medium text-slate-700">标题</label>
             <input type="text" name="title" id="title" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
         </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="category" class="block text-sm font-medium text-slate-700">分类</label>
+                <select name="category" id="category" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="">选择分类</option>
+                    <option value="技术">技术</option>
+                    <option value="生活">生活</option>
+                    <option value="随笔">随笔</option>
+                    <option value="学习">学习</option>
+                </select>
+            </div>
+            <div>
+                <label for="tags" class="block text-sm font-medium text-slate-700">标签</label>
+                <div class="mt-1">
+                    <select id="tag-selector" class="block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 mb-2">
+                        <option value="">选择标签</option>
+                        <option value="Python">Python</option>
+                        <option value="Flask">Flask</option>
+                        <option value="前端">前端</option>
+                        <option value="JavaScript">JavaScript</option>
+                        <option value="HTML">HTML</option>
+                        <option value="CSS">CSS</option>
+                        <option value="数据库">数据库</option>
+                        <option value="算法">算法</option>
+                    </select>
+                    <div id="selected-tags" class="flex flex-wrap gap-2 min-h-[2rem] p-2 border border-slate-300 rounded-md bg-slate-50"></div>
+                    <input type="hidden" name="tags" id="tags-input">
+                    <p class="text-xs text-slate-500 mt-1">点击选择标签，可多选</p>
+                </div>
+            </div>
+        </div>
+        
         <div>
             <label for="content" class="block text-sm font-medium text-slate-700">内容</label>
-            <textarea name="content" id="content" rows="10" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required></textarea>
+            <textarea name="content" id="content" rows="15" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="支持 Markdown 语法..." required></textarea>
         </div>
         <div>
             <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition">发布文章</button>
         </div>
     </form>
+
+    <script>
+        // 标签选择功能
+        const tagSelector = document.getElementById('tag-selector');
+        const selectedTagsDiv = document.getElementById('selected-tags');
+        const tagsInput = document.getElementById('tags-input');
+        let selectedTags = [];
+
+        tagSelector.addEventListener('change', function() {
+            const selectedTag = this.value;
+            if (selectedTag && !selectedTags.includes(selectedTag)) {
+                selectedTags.push(selectedTag);
+                updateTagsDisplay();
+                updateTagsInput();
+            }
+            this.value = '';
+        });
+
+        function updateTagsDisplay() {
+            selectedTagsDiv.innerHTML = selectedTags.map(tag => 
+                `<span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs flex items-center gap-1">
+                    ${tag}
+                    <button type="button" onclick="removeTag('${tag}')" class="text-indigo-600 hover:text-indigo-800">×</button>
+                </span>`
+            ).join('');
+        }
+
+        function removeTag(tag) {
+            selectedTags = selectedTags.filter(t => t !== tag);
+            updateTagsDisplay();
+            updateTagsInput();
+        }
+
+        function updateTagsInput() {
+            tagsInput.value = selectedTags.join(', ');
+        }
+    </script>
 {% endblock %}

@@ -2,16 +2,80 @@
 
 {% block title %}{{ post.title }}{% endblock %}
 
-<!-- ❗️❗️❗️ 关键：这里没有定义 sidebar block，所以侧边栏不会显示 -->
-
 {% block main_content %}
-<!-- ❗️❗️❗️ 关键：让 main 标签占满整个宽度 (md:col-span-4) -->
 <main class="md:col-span-4">
     <article class="bg-white p-8 rounded-xl shadow-md">
+        <!-- 文章元信息 -->
+        <div class="border-b border-slate-200 pb-6 mb-8">
+            <div class="flex justify-between items-start mb-4">
+                <h1 class="text-4xl font-bold text-slate-900">{{ post.title }}</h1>
+                
+                <!-- 操作按钮 -->
+                <div class="flex gap-2">
+                    <a href="{{ url_for('edit', id=post.id) }}" 
+                       class="bg-indigo-600 text-white px-3 py-2 rounded-md hover:bg-indigo-700 transition text-sm flex items-center gap-1">
+                        <i data-lucide="edit-2" class="w-4 h-4"></i>
+                        编辑
+                    </a>
+                    <form method="post" action="{{ url_for('delete', id=post.id) }}" class="inline" 
+                          onsubmit="return confirm('确定要删除这篇文章吗？')">
+                        <button type="submit" class="bg-red-600 text-white px-3 py-2 rounded-md hover:bg-red-700 transition text-sm flex items-center gap-1">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            删除
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-4 text-sm text-slate-500 mb-4">
+                <span class="flex items-center gap-1">
+                    <i data-lucide="calendar" class="w-4 h-4"></i>
+                    {{ post.created_at.strftime('%Y年%m月%d日') if post.created_at else '未知时间' }}
+                </span>
+                
+                {% if post.category %}
+                <span class="flex items-center gap-1">
+                    <i data-lucide="folder" class="w-4 h-4"></i>
+                    <span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs">{{ post.category }}</span>
+                </span>
+                {% endif %}
+                
+                <span class="flex items-center gap-1">
+                    <i data-lucide="eye" class="w-4 h-4"></i>
+                    阅读时间约 {{ (post.content|length / 300)|round|int }} 分钟
+                </span>
+            </div>
+            
+            <!-- 标签显示 -->
+            {% if post.get_tags_list() %}
+            <div class="flex flex-wrap gap-2">
+                {% for tag in post.get_tags_list() %}
+                <a href="{{ url_for('search', q=tag) }}" 
+                   class="bg-slate-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-800 px-3 py-1 rounded-full text-xs transition flex items-center gap-1">
+                    <i data-lucide="tag" class="w-3 h-3"></i>{{ tag }}
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- 文章内容 -->
         <div class="prose max-w-none">
-            <h1 class="text-4xl font-bold text-slate-900 mb-8">{{ post.title }}</h1>
             {{ content_html | safe }}
         </div>
     </article>
+    
+    <!-- 返回按钮 -->
+    <div class="mt-8 text-center">
+        <a href="{{ url_for('index') }}" 
+           class="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-800 transition">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            返回首页
+        </a>
+    </div>
 </main>
+
+<script>
+    lucide.createIcons();
+</script>
 {% endblock %}

@@ -12,13 +12,76 @@
             <!-- ❗️❗️❗️ 关键：使用 value 属性预填充旧标题 -->
             <input type="text" name="title" id="title" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" value="{{ post.title }}" required>
         </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="category" class="block text-sm font-medium text-slate-700">分类</label>
+                <select name="category" id="category" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="">选择分类</option>
+                    <option value="技术" {{ 'selected' if post.category == '技术' else '' }}>技术</option>
+                    <option value="生活" {{ 'selected' if post.category == '生活' else '' }}>生活</option>
+                    <option value="随笔" {{ 'selected' if post.category == '随笔' else '' }}>随笔</option>
+                    <option value="学习" {{ 'selected' if post.category == '学习' else '' }}>学习</option>
+                </select>
+            </div>
+            <div>
+                <label for="tags" class="block text-sm font-medium text-slate-700">标签</label>
+                <input type="text" name="tags" id="tags" placeholder="Python, Flask, 前端..." class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" value="{{ post.tags or '' }}">
+                <p class="text-xs text-slate-500 mt-1">多个标签用逗号分隔</p>
+            </div>
+        </div>
+        
         <div>
             <label for="content" class="block text-sm font-medium text-slate-700">内容</label>
             <!-- ❗️❗️❗️ 关键：在 textarea 中间直接放入旧内容 -->
-            <textarea name="content" id="content" rows="10" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>{{ post.content }}</textarea>
+            <textarea name="content" id="content" rows="15" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>{{ post.content }}</textarea>
         </div>
         <div>
             <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition">保存更改</button>
         </div>
     </form>
+
+    <script>
+        // 标签选择功能
+        const tagSelector = document.getElementById('tag-selector');
+        const selectedTagsDiv = document.getElementById('selected-tags');
+        const tagsInput = document.getElementById('tags-input');
+        let selectedTags = [];
+
+        // 初始化已有标签
+        const existingTags = tagsInput.value;
+        if (existingTags) {
+            selectedTags = existingTags.split(',').map(tag => tag.trim()).filter(tag => tag);
+            updateTagsDisplay();
+        }
+
+        tagSelector.addEventListener('change', function() {
+            const selectedTag = this.value;
+            if (selectedTag && !selectedTags.includes(selectedTag)) {
+                selectedTags.push(selectedTag);
+                updateTagsDisplay();
+                updateTagsInput();
+            }
+            this.value = '';
+        });
+
+        function updateTagsDisplay() {
+            selectedTagsDiv.innerHTML = selectedTags.map(tag => 
+                `<span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs flex items-center gap-1">
+                    ${tag}
+                    <button type="button" onclick="removeTag('${tag}')" class="text-indigo-600 hover:text-indigo-800">×</button>
+                </span>`
+            ).join('');
+        }
+
+        function removeTag(tag) {
+            selectedTags = selectedTags.filter(t => t !== tag);
+            updateTagsDisplay();
+            updateTagsInput();
+        }
+
+        function updateTagsInput() {
+            tagsInput.value = selectedTags.join(', ');
+        }
+    </script>
 {% endblock %}

@@ -1,6 +1,7 @@
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
 import markdown  # 使用 markdown，不是 markdown2
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -16,9 +17,18 @@ class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
     content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    category = db.Column(db.String(50), default='未分类')
+    tags = db.Column(db.Text, default='')
 
     def __repr__(self):
         return f'<Post {self.title}>'
+    
+    def get_tags_list(self):
+        """返回标签列表"""
+        if self.tags:
+            return [tag.strip() for tag in self.tags.split(',') if tag.strip()]
+        return []
 
 @app.cli.command('init-db')
 def init_db_command():
@@ -30,6 +40,29 @@ def init_db_command():
 def index():
     posts = Post.query.order_by(Post.id.desc()).all()
     return render_template('index.html', posts=posts)
+
+@app.route('/search')
+def search():
+    query = request.args.get('q', '')
+    category = request.args.get('category', '')
+    
+    posts = Post.query
+    
+    if query:
+        posts = posts.filter(
+            db.or_(
+                Post.title.contains(query),
+                Post.content.contains(query),
+                Post.tags.contains(query)
+            )
+        )
+    
+    if category:
+        posts = posts.filter(Post.category == category)
+    
+    posts = posts.order_by(Post.id.desc()).all()
+    
+    return render_template('search.html', posts=posts, query=query, category=category)
 
 @app.route('/post/<int:id>')
 def post(id):
@@ -63,11 +96,18 @@ def create():
     if request.method == 'POST':
         title = request.form['title']
         content = request.form['content']
+        category = request.form.get('category', '未分类')
+        tags = request.form.get('tags', '')
 
         if not title:
             flash('Title is required!')
         else:
-            new_post = Post(title=title, content=content)
+            new_post = Post(
+                title=title, 
+                content=content,
+                category=category if category else '未分类',
+                tags=tags
+            )
             db.session.add(new_post)
             db.session.commit()
             return redirect(url_for('index'))
@@ -81,12 +121,16 @@ def edit(id):
     if request.method == 'POST':
         title = request.form['title']
         content = request.form['content']
+        category = request.form.get('category', '未分类')
+        tags = request.form.get('tags', '')
 
         if not title:
             flash('Title is required!')
         else:
             post.title = title
             post.content = content
+            post.category = category if category else '未分类'
+            post.tags = tags
             db.session.commit()
             return redirect(url_for('post', id=post.id))
 

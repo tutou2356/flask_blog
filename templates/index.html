@@ -6,20 +6,86 @@
 {% block sidebar %}
 <aside class="md:col-span-1">
     <div class="bg-white p-6 rounded-xl shadow-md text-center sticky top-24">
-        <!-- ❗️❗️❗️ 1. 修改头像：将下面的 src 链接替换成你自己的图片链接 -->
         <img src="{{ url_for('static', filename='blog11.jpeg') }}" alt="博主头像" class="w-24 h-24 rounded-full mx-auto shadow-lg">
 
         <h2 class="text-xl font-bold mt-4 text-slate-800">Unicode</h2>
         <p class="text-sm text-slate-500 mt-1">Editing colorful lifes by coding.</p>
-
-        <!-- ❗️❗️❗️ 2. 修改社交链接：将下面的 # 替换成你的个人主页链接 -->
-        <div class="flex justify-center gap-4 mt-4 text-slate-600">
-            <a href="mailto:tutou2356@gmail.com" class="hover:text-indigo-600" title="邮箱"><i data-lucide="mail"></i></a>
-            <a href="https://github.com/tutou2356" target="_blank" class="hover:text-indigo-600" title="GitHub"><i data-lucide="github"></i></a>
-            <a href="#" class="hover:text-indigo-600" title="Telegram"><i data-lucide="send"></i></a>
-            <a href="#" class="hover:text-indigo-600" title="Discord"><i data-lucide="message-square"></i></a>
+        
+        <!-- 统计信息 -->
+        <div class="grid grid-cols-2 gap-4 mt-6 pt-4 border-t border-slate-200">
+            <div class="text-center">
+                <div class="text-2xl font-bold text-indigo-600">{{ posts|length }}</div>
+                <div class="text-xs text-slate-500">文章</div>
+            </div>
+            <div class="text-center">
+                {% set all_tags = [] %}
+                {% for post in posts %}
+                    {% set all_tags = all_tags + post.get_tags_list() %}
+                {% endfor %}
+                <div class="text-2xl font-bold text-indigo-600">{{ all_tags|unique|list|length }}</div>
+                <div class="text-xs text-slate-500">标签</div>
+            </div>
+        </div>
+        
+        <!-- 社交链接 -->
+        <div class="flex justify-center gap-4 mt-6 pt-4 border-t border-slate-200">
+            <a href="https://github.com/tutou2356" target="_blank" class="text-slate-500 hover:text-indigo-600 transition">
+                <i data-lucide="github" class="w-5 h-5"></i>
+            </a>
+            <a href="mailto:tutou2356@gmail.com" class="text-slate-500 hover:text-indigo-600 transition">
+                <i data-lucide="mail" class="w-5 h-5"></i>
+            </a>
+            <a href="https://twitter.com/yourusername" target="_blank" class="text-slate-500 hover:text-indigo-600 transition">
+                <i data-lucide="twitter" class="w-5 h-5"></i>
+            </a>
+            <a href="/rss" class="text-slate-500 hover:text-indigo-600 transition">
+                <i data-lucide="rss" class="w-5 h-5"></i>
+            </a>
         </div>
     </div>
+    
+    <!-- 分类列表 -->
+    {% set categories = posts|map(attribute='category')|unique|list %}
+    {% if categories %}
+    <div class="bg-white p-6 rounded-xl shadow-md mt-6">
+        <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
+            <i data-lucide="folder" class="w-5 h-5 mr-2"></i>
+            分类
+        </h3>
+        <div class="space-y-2">
+            {% for category in categories %}
+            {% set count = posts|selectattr('category', 'equalto', category)|list|length %}
+            <a href="{{ url_for('search', category=category) }}" 
+               class="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 transition text-sm">
+                <span class="text-slate-700">{{ category }}</span>
+                <span class="bg-slate-100 text-slate-600 px-2 py-1 rounded-full text-xs">{{ count }}</span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- 标签云 -->
+    {% set all_tags = [] %}
+    {% for post in posts %}
+        {% set all_tags = all_tags + post.get_tags_list() %}
+    {% endfor %}
+    {% if all_tags %}
+    <div class="bg-white p-6 rounded-xl shadow-md mt-6">
+        <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
+            <i data-lucide="tag" class="w-5 h-5 mr-2"></i>
+            标签云
+        </h3>
+        <div class="flex flex-wrap gap-2">
+            {% for tag in all_tags|unique %}
+            <a href="{{ url_for('search', q=tag) }}" 
+               class="bg-slate-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-800 px-3 py-1 rounded-full text-xs transition">
+                {{ tag }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 </aside>
 {% endblock %}
 
@@ -29,17 +95,55 @@
     <div class="space-y-8">
         {% for post in posts %}
             <article class="bg-white p-6 rounded-xl shadow-md transition hover:shadow-lg">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex items-center gap-4 text-sm text-slate-500">
+                        <span class="flex items-center gap-1">
+                            <i data-lucide="calendar" class="w-4 h-4"></i>
+                            {{ post.created_at.strftime('%Y-%m-%d') if post.created_at else '未知时间' }}
+                        </span>
+                        {% if post.category %}
+                        <span class="flex items-center gap-1">
+                            <i data-lucide="folder" class="w-4 h-4"></i>
+                            <span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs">{{ post.category }}</span>
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                
                 <a href="{{ url_for('post', id=post.id) }}">
                     <h2 class="text-2xl font-bold text-slate-800 hover:text-indigo-600 transition">{{ post.title }}</h2>
                 </a>
+                
                 <div class="prose max-w-none mt-4 text-slate-600 text-sm">
                     {{ post.content[:200] | escape }}...
                 </div>
-                <div class="mt-4 flex justify-end items-center gap-4">
-                    <a href="{{ url_for('edit', id=post.id) }}" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">编辑</a>
-                    <form action="{{ url_for('delete', id=post.id) }}" method="post">
-                        <button type="submit" class="text-xs text-red-500 hover:text-red-700 font-medium" onclick="return confirm('确定要删除这篇文章吗？');">删除</button>
-                    </form>
+                
+                {% if post.get_tags_list() %}
+                <div class="flex flex-wrap gap-2 mt-4">
+                    {% for tag in post.get_tags_list() %}
+                    <span class="bg-slate-100 text-slate-700 px-2 py-1 rounded-full text-xs">
+                        <i data-lucide="tag" class="w-3 h-3 inline mr-1"></i>{{ tag }}
+                    </span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <div class="mt-4 flex justify-between items-center">
+                    <a href="{{ url_for('post', id=post.id) }}" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                        阅读全文 →
+                    </a>
+                    <div class="flex items-center gap-3">
+                        <a href="{{ url_for('edit', id=post.id) }}" class="text-indigo-600 hover:text-indigo-800 text-xs font-medium flex items-center gap-1">
+                            <i data-lucide="edit-2" class="w-3 h-3"></i>
+                            编辑
+                        </a>
+                        <form action="{{ url_for('delete', id=post.id) }}" method="post" class="inline">
+                            <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-medium flex items-center gap-1" onclick="return confirm('确定要删除这篇文章吗？');">
+                                <i data-lucide="trash-2" class="w-3 h-3"></i>
+                                删除
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </article>
         {% else %}
