@@ -1,17 +1,15 @@
-# app_blog.py (最终完整版)
-
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
-import markdown
-from markdown.extensions import codehilite
+# ❗️❗️❗️ 关键修复：确保导入的是 markdown2
+import markdown2
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'blog.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'dev'
+app.config['SECRET_KEY'] = 'dev' 
 
 db = SQLAlchemy(app)
 
@@ -39,21 +37,10 @@ def index():
 @app.route('/post/<int:id>')
 def post(id):
     post = Post.query.get_or_404(id)
-    # 修复：更正确的Python-Markdown配置
-    html_content = markdown.markdown(
-        post.content,
-        extensions=[
-            'markdown.extensions.codehilite',
-            'markdown.extensions.fenced_code',
-            'markdown.extensions.tables'
-        ],
-        extension_configs={
-            'markdown.extensions.codehilite': {
-                'css_class': 'highlight',
-                'use_pygments': True,
-                'noclasses': False
-            }
-        }
+    # 启用fenced-code-blocks扩展以支持代码高亮
+    html_content = markdown2.markdown(
+        post.content, 
+        extras=["fenced-code-blocks"]
     )
     return render_template('post.html', post=post, content_html=html_content)
 
