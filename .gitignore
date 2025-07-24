@@ -1,0 +1,14 @@
+# 环境变量文件
+.env
+
+# 数据库文件
+*.db
+
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE 文件
+.vscode/
+.idea/

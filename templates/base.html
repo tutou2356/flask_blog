@@ -135,6 +135,29 @@
             border-color: #6366f1 !important;
             ring-color: #6366f1 !important;
         }
+        
+        /* 深色模式下的下拉菜单 */
+        .dark .group:hover > div {
+            background-color: #374151 !important;
+            border-color: #6b7280 !important;
+        }
+        
+        .dark .group:hover > div a {
+            color: #f9fafb !important;
+        }
+        
+        .dark .group:hover > div a:hover {
+            background-color: #4b5563 !important;
+        }
+        
+        /* 深色模式下的按钮 */
+        .dark .bg-slate-600 {
+            background-color: #475569 !important;
+        }
+        
+        .dark .hover\:bg-slate-700:hover {
+            background-color: #334155 !important;
+        }
     </style>
 </head>
 <body class="bg-slate-100">
@@ -161,10 +184,36 @@
                         <i data-lucide="moon" class="w-5 h-5 text-slate-600"></i>
                     </button>
                     
-                    <a href="{{ url_for('create') }}" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition text-sm font-medium">
-                        <i data-lucide="edit-3" class="inline-block w-4 h-4 mr-1"></i>
-                        撰写新文章
-                    </a>
+                    <!-- 登录状态显示 -->
+                    {% if session.admin_logged_in %}
+                        <!-- 已登录状态 -->
+                        <div class="flex items-center gap-2">
+                            <a href="{{ url_for('create') }}" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition text-sm font-medium">
+                                <i data-lucide="edit-3" class="inline-block w-4 h-4 mr-1"></i>
+                                撰写新文章
+                            </a>
+                            <div class="relative group">
+                                <button class="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 rounded-md hover:bg-slate-100 transition">
+                                    <i data-lucide="user-check" class="w-4 h-4"></i>
+                                    <span class="hidden md:inline">管理员</span>
+                                    <i data-lucide="chevron-down" class="w-3 h-3"></i>
+                                </button>
+                                <!-- 下拉菜单 -->
+                                <div class="absolute right-0 mt-2 w-32 bg-white rounded-md shadow-lg border border-slate-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
+                                    <a href="{{ url_for('admin_logout') }}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-md">
+                                        <i data-lucide="log-out" class="inline-block w-3 h-3 mr-2"></i>
+                                        登出
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <!-- 未登录状态 -->
+                        <a href="{{ url_for('admin_login') }}" class="bg-slate-600 text-white px-4 py-2 rounded-md hover:bg-slate-700 transition text-sm font-medium">
+                            <i data-lucide="log-in" class="inline-block w-4 h-4 mr-1"></i>
+                            管理员登录
+                        </a>
+                    {% endif %}
                 </div>
             </div>
         </div>

@@ -1,17 +1,69 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
-import markdown  # 使用 markdown，不是 markdown2
+from datetime import datetime, timedelta
+import markdown
+from functools import wraps
+from dotenv import load_dotenv
+
+# 加载环境变量
+load_dotenv()
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'blog.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'dev'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev')
+app.config['ADMIN_PASSWORD'] = os.getenv('ADMIN_PASSWORD', 'admin123')
+
+# 会话配置
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 db = SQLAlchemy(app)
+
+# IP锁定存储 (重启后清空)
+failed_attempts = {}
+locked_ips = {}
+
+def is_ip_locked(ip):
+    """检查IP是否被锁定"""
+    if ip in locked_ips:
+        if datetime.now() < locked_ips[ip]:
+            return True
+        else:
+            # 锁定时间已过，清除记录
+            del locked_ips[ip]
+            if ip in failed_attempts:
+                del failed_attempts[ip]
+    return False
+
+def record_failed_attempt(ip):
+    """记录失败尝试"""
+    if ip not in failed_attempts:
+        failed_attempts[ip] = []
+    
+    # 清除1小时前的记录
+    one_hour_ago = datetime.now() - timedelta(hours=1)
+    failed_attempts[ip] = [attempt for attempt in failed_attempts[ip] if attempt > one_hour_ago]
+    
+    # 添加当前失败记录
+    failed_attempts[ip].append(datetime.now())
+    
+    # 检查是否需要锁定
+    if len(failed_attempts[ip]) >= 3:
+        locked_ips[ip] = datetime.now() + timedelta(minutes=15)
+        return True
+    return False
+
+def admin_required(f):
+    """管理员权限装饰器"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
 
 class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -92,6 +144,7 @@ def post(id):
     return render_template('post.html', post=post, content_html=html_content)
 
 @app.route('/create', methods=('GET', 'POST'))
+@admin_required
 def create():
     if request.method == 'POST':
         title = request.form['title']
@@ -115,6 +168,7 @@ def create():
     return render_template('create.html')
 
 @app.route('/<int:id>/edit', methods=('GET', 'POST'))
+@admin_required
 def edit(id):
     post = Post.query.get_or_404(id)
 
@@ -137,11 +191,48 @@ def edit(id):
     return render_template('edit.html', post=post)
 
 @app.route('/<int:id>/delete', methods=('POST',))
+@admin_required
 def delete(id):
     post = Post.query.get_or_404(id)
     db.session.delete(post)
     db.session.commit()
     flash(f'"{post.title}" was successfully deleted!')
+    return redirect(url_for('index'))
+
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    # 检查IP是否被锁定
+    client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR', '127.0.0.1'))
+    
+    if is_ip_locked(client_ip):
+        flash('IP已被锁定，请15分钟后再试', 'error')
+        return render_template('admin_login.html'), 429
+    
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        next_page = request.form.get('next', url_for('index'))
+        
+        if password == app.config['ADMIN_PASSWORD']:
+            session['admin_logged_in'] = True
+            session.permanent = True
+            flash('登录成功！', 'success')
+            return redirect(next_page)
+        else:
+            # 记录失败尝试
+            is_locked = record_failed_attempt(client_ip)
+            if is_locked:
+                flash('登录失败次数过多，IP已被锁定15分钟', 'error')
+            else:
+                remaining = 3 - len(failed_attempts.get(client_ip, []))
+                flash(f'密码错误，还有{remaining}次尝试机会', 'error')
+    
+    next_page = request.args.get('next', '')
+    return render_template('admin_login.html', next=next_page)
+
+@app.route('/admin/logout')
+def admin_logout():
+    session.pop('admin_logged_in', None)
+    flash('已成功登出', 'info')
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
