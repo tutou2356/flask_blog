@@ -1,29 +1,52 @@
-<!-- templates/index.html -->
 {% extends 'base.html' %}
 
 {% block title %}首页{% endblock %}
 
-{% block content %}
-    <div class="space-y-6">
+<!-- 填充侧边栏 -->
+{% block sidebar %}
+<aside class="md:col-span-1">
+    <div class="bg-white p-6 rounded-xl shadow-md text-center sticky top-24">
+        <!-- ❗️❗️❗️ 1. 修改头像：将下面的 src 链接替换成你自己的图片链接 -->
+        <img src="{{ url_for('static', filename='blog11.jpeg') }}" alt="博主头像" class="w-24 h-24 rounded-full mx-auto shadow-lg">
+
+        <h2 class="text-xl font-bold mt-4 text-slate-800">Unicode</h2>
+        <p class="text-sm text-slate-500 mt-1">Editing colorful lifes by coding.</p>
+
+        <!-- ❗️❗️❗️ 2. 修改社交链接：将下面的 # 替换成你的个人主页链接 -->
+        <div class="flex justify-center gap-4 mt-4 text-slate-600">
+            <a href="mailto:tutou2356@gmail.com" class="hover:text-indigo-600" title="邮箱"><i data-lucide="mail"></i></a>
+            <a href="https://github.com/tutou2356" target="_blank" class="hover:text-indigo-600" title="GitHub"><i data-lucide="github"></i></a>
+            <a href="#" class="hover:text-indigo-600" title="Telegram"><i data-lucide="send"></i></a>
+            <a href="#" class="hover:text-indigo-600" title="Discord"><i data-lucide="message-square"></i></a>
+        </div>
+    </div>
+</aside>
+{% endblock %}
+
+<!-- 填充主内容区 -->
+{% block main_content %}
+<main class="md:col-span-3">
+    <div class="space-y-8">
         {% for post in posts %}
-            <article class="bg-white p-6 rounded-lg shadow-md">
-                <!-- ❗️❗️❗️ 升级：标题变为链接 -->
+            <article class="bg-white p-6 rounded-xl shadow-md transition hover:shadow-lg">
                 <a href="{{ url_for('post', id=post.id) }}">
-                    <h2 class="text-2xl font-semibold text-slate-800 hover:text-indigo-600 transition">{{ post.title }}</h2>
+                    <h2 class="text-2xl font-bold text-slate-800 hover:text-indigo-600 transition">{{ post.title }}</h2>
                 </a>
-                <!-- ❗️❗️❗️ 升级：只显示前150个字符作为摘要 -->
-                <div class="prose max-w-none mt-4 text-slate-600">
-                    {{ post.content[:150] | escape }}...
+                <div class="prose max-w-none mt-4 text-slate-600 text-sm">
+                    {{ post.content[:200] | escape }}...
                 </div>
                 <div class="mt-4 flex justify-end items-center gap-4">
-                    <a href="{{ url_for('edit', id=post.id) }}" class="text-sm text-indigo-600 hover:text-indigo-800">编辑</a>
+                    <a href="{{ url_for('edit', id=post.id) }}" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">编辑</a>
                     <form action="{{ url_for('delete', id=post.id) }}" method="post">
-                        <button type="submit" class="text-sm text-red-500 hover:text-red-700" onclick="return confirm('确定要删除这篇文章吗？');">删除</button>
+                        <button type="submit" class="text-xs text-red-500 hover:text-red-700 font-medium" onclick="return confirm('确定要删除这篇文章吗？');">删除</button>
                     </form>
                 </div>
             </article>
         {% else %}
-            <p class="text-center text-slate-500">还没有文章，快去写第一篇吧！</p>
+            <div class="bg-white p-6 rounded-xl shadow-md text-center">
+                <p class="text-slate-500">还没有文章，快去写第一篇吧！</p>
+            </div>
         {% endfor %}
     </div>
+</main>
 {% endblock %}

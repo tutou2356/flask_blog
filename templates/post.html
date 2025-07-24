@@ -1,14 +1,17 @@
-<!-- templates/post.html -->
 {% extends 'base.html' %}
 
 {% block title %}{{ post.title }}{% endblock %}
 
-{% block content %}
-    <article class="bg-white p-8 rounded-lg shadow-md">
-        <!-- ❗️❗️❗️ 修复：将prose类应用到包含所有内容的父级div上 -->
+<!-- ❗️❗️❗️ 关键：这里没有定义 sidebar block，所以侧边栏不会显示 -->
+
+{% block main_content %}
+<!-- ❗️❗️❗️ 关键：让 main 标签占满整个宽度 (md:col-span-4) -->
+<main class="md:col-span-4">
+    <article class="bg-white p-8 rounded-xl shadow-md">
         <div class="prose max-w-none">
-            <h1>{{ post.title }}</h1>
+            <h1 class="text-4xl font-bold text-slate-900 mb-8">{{ post.title }}</h1>
             {{ content_html | safe }}
         </div>
     </article>
+</main>
 {% endblock %}
