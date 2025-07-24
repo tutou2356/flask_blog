@@ -69,6 +69,13 @@
         </div>
     </nav>
 
+    <!-- 检查是否有 content block，如果有就使用单列布局 -->
+    {% if self.content() %}
+    <div class="max-w-4xl mx-auto mt-8 px-4">
+        {% block content %}{% endblock %}
+    </div>
+    {% else %}
+    <!-- 否则使用双列布局 -->
     <div class="max-w-6xl mx-auto mt-8 px-4 grid grid-cols-1 md:grid-cols-4 gap-8">
         <!-- 左侧边栏 Block -->
         {% block sidebar %}
@@ -80,6 +87,7 @@
         <!-- 这个 block 默认也是空的 -->
         {% endblock %}
     </div>
+    {% endif %}
 
     <script>
         lucide.createIcons();
