@@ -22,6 +22,74 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 db = SQLAlchemy(app)
 
+# ---- 新增：访客与评论模型 ----
+class Visit(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    path = db.Column(db.String(255), nullable=False)
+    method = db.Column(db.String(10), default='GET')
+    ip = db.Column(db.String(64))
+    user_agent = db.Column(db.Text)
+    referrer = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    post_id = db.Column(db.Integer)
+
+    def __repr__(self):
+        return f'<Visit {self.ip} {self.path}>'
+
+class Comment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
+    author_name = db.Column(db.String(80), nullable=False)
+    author_email = db.Column(db.String(120))
+    content = db.Column(db.Text, nullable=False)
+    is_admin = db.Column(db.Boolean, default=False)
+    ip = db.Column(db.String(64))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<Comment {self.author_name} on {self.post_id}>'
+
+# 初始化数据库表（首次请求时）
+@app.before_first_request
+def create_tables():
+    try:
+        db.create_all()
+    except Exception as e:
+        print(f"创建表时出错: {e}")
+
+# 简单的评论限流（内存，进程内）
+last_comment_time_by_ip = {}
+
+# 记录访客访问
+@app.before_request
+def log_visit():
+    try:
+        # 跳过静态资源和管理登录提交等不必要记录
+        path = request.path or '/'
+        if any([
+            path.startswith('/static'),
+            path.startswith('/favicon'),
+            path.startswith('/admin/login') and request.method == 'POST'
+        ]):
+            return
+        ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR', ''))
+        ua = request.user_agent.string if request.user_agent else ''
+        ref = request.referrer
+        post_id = None
+        # 如果是文章详情页，尝试解析 post_id
+        if path.startswith('/post/'):
+            try:
+                post_id = int(path.split('/')[-1])
+            except Exception:
+                post_id = None
+        v = Visit(path=path, method=request.method, ip=ip, user_agent=ua, referrer=ref, post_id=post_id)
+        db.session.add(v)
+        # 不在这里 commit，以减少写入频率；但为简单起见仍 commit
+        db.session.commit()
+    except Exception as e:
+        # 不因日志失败影响主流程
+        print(f"记录访问失败: {e}")
+
 # IP锁定存储 (重启后清空)
 failed_attempts = {}
 locked_ips = {}
@@ -141,7 +209,69 @@ def post(id):
         # 降级处理
         html_content = markdown.markdown(post.content)
     
-    return render_template('post.html', post=post, content_html=html_content)
+    comments = Comment.query.filter_by(post_id=post.id).order_by(Comment.created_at.asc()).all()
+    return render_template('post.html', post=post, content_html=html_content, comments=comments)
+
+@app.route('/post/<int:id>/comment', methods=['POST'])
+def add_comment(id):
+    post = Post.query.get_or_404(id)
+    ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR', ''))
+
+    # 简单限流：同一IP 30秒内只允许一次
+    now = datetime.utcnow()
+    last = last_comment_time_by_ip.get(ip)
+    if last and (now - last).total_seconds() < 30:
+        flash('评论过于频繁，请稍后再试。', 'error')
+        return redirect(url_for('post', id=post.id))
+
+    content = (request.form.get('content') or '').strip()
+    if not content:
+        flash('评论内容不能为空。', 'error')
+        return redirect(url_for('post', id=post.id))
+
+    if session.get('admin_logged_in'):
+        author_name = '管理员'
+        author_email = None
+        is_admin = True
+    else:
+        author_name = (request.form.get('name') or '').strip()
+        author_email = (request.form.get('email') or '').strip()
+        is_admin = False
+        if not author_name:
+            flash('昵称不能为空。', 'error')
+            return redirect(url_for('post', id=post.id))
+
+    comment = Comment(
+        post_id=post.id,
+        author_name=author_name,
+        author_email=author_email if not session.get('admin_logged_in') else None,
+        content=content,
+        is_admin=is_admin,
+        ip=ip,
+    )
+    db.session.add(comment)
+    db.session.commit()
+
+    last_comment_time_by_ip[ip] = now
+
+    flash('评论已发布！', 'success')
+    return redirect(url_for('post', id=post.id) + '#comments')
+
+@app.route('/comment/<int:comment_id>/delete', methods=['POST'])
+@admin_required
+def delete_comment(comment_id):
+    c = Comment.query.get_or_404(comment_id)
+    post_id = c.post_id
+    db.session.delete(c)
+    db.session.commit()
+    flash('评论已删除。', 'info')
+    return redirect(url_for('post', id=post_id) + '#comments')
+
+@app.route('/admin/visits')
+@admin_required
+def admin_visits():
+    visits = Visit.query.order_by(Visit.id.desc()).limit(200).all()
+    return render_template('visits.html', visits=visits)
 
 @app.route('/create', methods=('GET', 'POST'))
 @admin_required

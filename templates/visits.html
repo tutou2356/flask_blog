@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}访问记录{% endblock %}
+
+{% block content %}
+<div class="bg-white p-6 rounded-xl shadow-md">
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+      <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+      最近访问记录
+    </h1>
+    <a href="{{ url_for('index') }}" class="text-indigo-600 hover:text-indigo-800 text-sm flex items-center gap-1">
+      <i data-lucide="home" class="w-4 h-4"></i>
+      返回首页
+    </a>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-sm">
+      <thead>
+        <tr class="text-left text-slate-600 border-b">
+          <th class="py-2 pr-4">时间</th>
+          <th class="py-2 pr-4">IP</th>
+          <th class="py-2 pr-4">方法</th>
+          <th class="py-2 pr-4">路径</th>
+          <th class="py-2 pr-4">Referrer</th>
+          <th class="py-2 pr-4">User-Agent</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in visits %}
+        <tr class="border-b hover:bg-slate-50">
+          <td class="py-2 pr-4 whitespace-nowrap">{{ v.created_at.strftime('%Y-%m-%d %H:%M:%S') if v.created_at else '' }}</td>
+          <td class="py-2 pr-4">{{ v.ip or '' }}</td>
+          <td class="py-2 pr-4">{{ v.method }}</td>
+          <td class="py-2 pr-4">{{ v.path }}</td>
+          <td class="py-2 pr-4 max-w-[280px] truncate" title="{{ v.referrer }}">{{ v.referrer or '' }}</td>
+          <td class="py-2 pr-4 max-w-[400px] truncate" title="{{ v.user_agent }}">{{ v.user_agent or '' }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="py-6 text-center text-slate-500">暂无访问记录</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  lucide.createIcons();
+</script>
+{% endblock %}

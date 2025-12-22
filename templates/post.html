@@ -64,6 +64,64 @@
             {{ content_html | safe }}
         </div>
     </article>
+
+    <!-- 评论区域 -->
+    <section id="comments" class="mt-8">
+        <div class="bg-white p-6 rounded-xl shadow-md">
+            <h3 class="text-lg font-bold text-slate-800 flex items-center">
+                <i data-lucide="message-square" class="w-5 h-5 mr-2"></i>
+                评论
+            </h3>
+            {% if comments %}
+            <ul class="space-y-4 mt-4">
+                {% for c in comments %}
+                <li class="border border-slate-200 rounded-lg p-4">
+                    <div class="flex items-center justify-between text-sm text-slate-500">
+                        <div>
+                            <span class="font-medium text-slate-700">{{ c.author_name }}</span>
+                            {% if c.is_admin %}
+                            <span class="ml-2 text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">管理员</span>
+                            {% endif %}
+                        </div>
+                        <span>{{ c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else '' }}</span>
+                    </div>
+                    <div class="mt-2 text-slate-800 whitespace-pre-wrap">{{ c.content | e }}</div>
+                    {% if session.admin_logged_in %}
+                    <form method="post" action="{{ url_for('delete_comment', comment_id=c.id) }}" class="mt-2 text-right" onsubmit="return confirm('确定删除此评论？');">
+                        <button type="submit" class="text-red-600 hover:text-red-800 text-xs">删除</button>
+                    </form>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-sm text-slate-500 mt-4">还没有评论，快来抢沙发吧～</p>
+            {% endif %}
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow-md mt-6">
+            <h3 class="text-lg font-bold text-slate-800 mb-4">发表你的看法</h3>
+            <form method="post" action="{{ url_for('add_comment', id=post.id) }}" class="space-y-4">
+                {% if session.admin_logged_in %}
+                <div class="text-sm text-slate-500">已登录为管理员，将以“管理员”身份发布。</div>
+                {% else %}
+                <div>
+                    <label class="block text-sm text-slate-600 mb-1">昵称</label>
+                    <input name="name" required class="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-600 mb-1">邮箱（可选）</label>
+                    <input name="email" type="email" class="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                {% endif %}
+                <div>
+                    <label class="block text-sm text-slate-600 mb-1">内容</label>
+                    <textarea name="content" rows="4" required class="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                </div>
+                <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition text-sm">发布评论</button>
+            </form>
+        </div>
+    </section>
     
     <!-- 返回按钮 -->
     <div class="mt-8 text-center">
