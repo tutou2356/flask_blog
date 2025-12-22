@@ -50,13 +50,16 @@ class Comment(db.Model):
     def __repr__(self):
         return f'<Comment {self.author_name} on {self.post_id}>'
 
-# 初始化数据库表（首次请求时）
-@app.before_first_request
+# 初始化数据库表（应用加载时，兼容 Flask 2.3+）
 def create_tables():
     try:
-        db.create_all()
+        with app.app_context():
+            db.create_all()
     except Exception as e:
         print(f"创建表时出错: {e}")
+
+# 在模块导入时执行一次（适配 PythonAnywhere/Wsgi）
+create_tables()
 
 # 简单的评论限流（内存，进程内）
 last_comment_time_by_ip = {}
