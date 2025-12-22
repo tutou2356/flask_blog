@@ -23,6 +23,10 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 db = SQLAlchemy(app)
 
+from datetime import datetime
+from flask import request
+
+
 # ---- 新增：访客与评论模型 ----
 class Visit(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -37,6 +41,7 @@ class Visit(db.Model):
     def __repr__(self):
         return f'<Visit {self.ip} {self.path}>'
 
+
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
@@ -50,21 +55,20 @@ class Comment(db.Model):
     def __repr__(self):
         return f'<Comment {self.author_name} on {self.post_id}>'
 
-# 初始化数据库表（应用加载时，兼容 Flask 2.3+）
-def create_tables():
+
+# ---- ✅ 修复重点：初始化数据库表 ----
+# 删除旧的 @app.before_first_request，改为直接执行
+with app.app_context():
     try:
-        with app.app_context():
-            db.create_all()
+        db.create_all()
     except Exception as e:
         print(f"创建表时出错: {e}")
-
-# 在模块导入时执行一次（适配 PythonAnywhere/Wsgi）
-create_tables()
 
 # 简单的评论限流（内存，进程内）
 last_comment_time_by_ip = {}
 
-# 记录访客访问
+
+# ---- 记录访客访问 ----
 @app.before_request
 def log_visit():
     try:
@@ -73,27 +77,42 @@ def log_visit():
         if any([
             path.startswith('/static'),
             path.startswith('/favicon'),
+            # 如果是管理员登录的POST请求，通常不记录，避免日志杂乱
             path.startswith('/admin/login') and request.method == 'POST'
         ]):
             return
+
+        # 获取真实 IP (PythonAnywhere 位于反向代理之后，必须用 HTTP_X_FORWARDED_FOR)
         ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR', ''))
+        # 如果有多个代理IP，通常取第一个
+        if ip and ',' in ip:
+            ip = ip.split(',')[0].strip()
+
         ua = request.user_agent.string if request.user_agent else ''
         ref = request.referrer
         post_id = None
+
         # 如果是文章详情页，尝试解析 post_id
         if path.startswith('/post/'):
             try:
-                post_id = int(path.split('/')[-1])
+                # 假设 URL 结构是 /post/123...
+                parts = path.split('/')
+                # 找到 'post' 后面紧跟的那个数字
+                if 'post' in parts:
+                    idx = parts.index('post')
+                    if idx + 1 < len(parts):
+                        post_id = int(parts[idx + 1])
             except Exception:
                 post_id = None
+
         v = Visit(path=path, method=request.method, ip=ip, user_agent=ua, referrer=ref, post_id=post_id)
         db.session.add(v)
-        # 不在这里 commit，以减少写入频率；但为简单起见仍 commit
+        # 提交到数据库
         db.session.commit()
     except Exception as e:
-        # 不因日志失败影响主流程
+        # 发生错误回滚，以免影响后续的主业务逻辑
+        db.session.rollback()
         print(f"记录访问失败: {e}")
-
 # IP锁定存储 (重启后清空)
 failed_attempts = {}
 locked_ips = {}
