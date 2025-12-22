@@ -1,6 +1,7 @@
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import or_
 from datetime import datetime, timedelta
 import markdown
 from functools import wraps
@@ -170,7 +171,7 @@ def search():
     
     if query:
         posts = posts.filter(
-            db.or_(
+            or_(
                 Post.title.contains(query),
                 Post.content.contains(query),
                 Post.tags.contains(query)
