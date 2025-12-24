@@ -36,6 +36,7 @@
                     {% endif %}
                 </div>
                 
+                {% if current_user.is_authenticated and current_user.role == 'admin' %}
                 <div class="flex gap-2">
                     <a href="{{ url_for('edit', id=post.id) }}" 
                        class="text-indigo-600 hover:text-indigo-800 text-sm flex items-center gap-1">
@@ -50,6 +51,7 @@
                         </button>
                     </form>
                 </div>
+                {% endif %}
             </div>
             
             <a href="{{ url_for('post', id=post.id) }}">

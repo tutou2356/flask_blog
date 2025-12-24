@@ -41,47 +41,4 @@
         </div>
     </form>
 
-    <script>
-        // 标签选择功能
-        const tagSelector = document.getElementById('tag-selector');
-        const selectedTagsDiv = document.getElementById('selected-tags');
-        const tagsInput = document.getElementById('tags-input');
-        let selectedTags = [];
-
-        // 初始化已有标签
-        const existingTags = tagsInput.value;
-        if (existingTags) {
-            selectedTags = existingTags.split(',').map(tag => tag.trim()).filter(tag => tag);
-            updateTagsDisplay();
-        }
-
-        tagSelector.addEventListener('change', function() {
-            const selectedTag = this.value;
-            if (selectedTag && !selectedTags.includes(selectedTag)) {
-                selectedTags.push(selectedTag);
-                updateTagsDisplay();
-                updateTagsInput();
-            }
-            this.value = '';
-        });
-
-        function updateTagsDisplay() {
-            selectedTagsDiv.innerHTML = selectedTags.map(tag => 
-                `<span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs flex items-center gap-1">
-                    ${tag}
-                    <button type="button" onclick="removeTag('${tag}')" class="text-indigo-600 hover:text-indigo-800">×</button>
-                </span>`
-            ).join('');
-        }
-
-        function removeTag(tag) {
-            selectedTags = selectedTags.filter(t => t !== tag);
-            updateTagsDisplay();
-            updateTagsInput();
-        }
-
-        function updateTagsInput() {
-            tagsInput.value = selectedTags.join(', ');
-        }
-    </script>
 {% endblock %}

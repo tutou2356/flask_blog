@@ -11,6 +11,7 @@
                 <h1 class="text-4xl font-bold text-slate-900">{{ post.title }}</h1>
                 
                 <!-- 操作按钮 -->
+                {% if current_user.is_authenticated and current_user.role == 'admin' %}
                 <div class="flex gap-2">
                     <a href="{{ url_for('edit', id=post.id) }}" 
                        class="bg-indigo-600 text-white px-3 py-2 rounded-md hover:bg-indigo-700 transition text-sm flex items-center gap-1">
@@ -25,6 +26,7 @@
                         </button>
                     </form>
                 </div>
+                {% endif %}
             </div>
             
             <div class="flex flex-wrap items-center gap-4 text-sm text-slate-500 mb-4">
@@ -86,7 +88,7 @@
                         <span>{{ c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else '' }}</span>
                     </div>
                     <div class="mt-2 text-slate-800 whitespace-pre-wrap">{{ c.content | e }}</div>
-                    {% if session.admin_logged_in %}
+                    {% if current_user.is_authenticated and current_user.role == 'admin' %}
                     <form method="post" action="{{ url_for('delete_comment', comment_id=c.id) }}" class="mt-2 text-right" onsubmit="return confirm('确定删除此评论？');">
                         <button type="submit" class="text-red-600 hover:text-red-800 text-xs">删除</button>
                     </form>
@@ -102,7 +104,7 @@
         <div class="bg-white p-6 rounded-xl shadow-md mt-6">
             <h3 class="text-lg font-bold text-slate-800 mb-4">发表你的看法</h3>
             <form method="post" action="{{ url_for('add_comment', id=post.id) }}" class="space-y-4">
-                {% if session.admin_logged_in %}
+                {% if current_user.is_authenticated and current_user.role == 'admin' %}
                 <div class="text-sm text-slate-500">已登录为管理员，将以“管理员”身份发布。</div>
                 {% else %}
                 <div>

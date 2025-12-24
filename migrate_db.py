@@ -42,6 +42,15 @@ def migrate_database():
         cursor.execute("UPDATE post SET created_at = ? WHERE created_at IS NULL", (current_time,))
         cursor.execute("UPDATE post SET category = '未分类' WHERE category IS NULL OR category = ''")
         cursor.execute("UPDATE post SET tags = '' WHERE tags IS NULL")
+
+        # user 表新增 role 字段
+        cursor.execute("PRAGMA table_info(user)")
+        user_columns = [column[1] for column in cursor.fetchall()]
+        if 'role' not in user_columns:
+            cursor.execute("ALTER TABLE user ADD COLUMN role VARCHAR(20)")
+            print("添加 user.role 字段成功")
+
+        cursor.execute("UPDATE user SET role = 'visitor' WHERE role IS NULL OR role = ''")
         
         conn.commit()
         print("数据库迁移完成！")

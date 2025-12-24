@@ -1,11 +1,13 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, abort
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import or_
 from datetime import datetime, timedelta
 import markdown
 from functools import wraps
 from dotenv import load_dotenv
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_login import LoginManager, UserMixin, current_user, login_user, logout_user
 
 # 加载环境变量
 load_dotenv()
@@ -16,58 +18,29 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'blog.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev')
-app.config['ADMIN_PASSWORD'] = os.getenv('ADMIN_PASSWORD', 'admin123')
 
 # 会话配置
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 db = SQLAlchemy(app)
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
 
-from datetime import datetime
-from flask import request
+# ---- 登录与权限 ----
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
 
-
-# IP锁定存储 (重启后清空)
-failed_attempts = {}
-locked_ips = {}
-
-def is_ip_locked(ip):
-    """检查IP是否被锁定"""
-    if ip in locked_ips:
-        if datetime.now() < locked_ips[ip]:
-            return True
-        else:
-            # 锁定时间已过，清除记录
-            del locked_ips[ip]
-            if ip in failed_attempts:
-                del failed_attempts[ip]
-    return False
-
-def record_failed_attempt(ip):
-    """记录失败尝试"""
-    if ip not in failed_attempts:
-        failed_attempts[ip] = []
-    
-    # 清除1小时前的记录
-    one_hour_ago = datetime.now() - timedelta(hours=1)
-    failed_attempts[ip] = [attempt for attempt in failed_attempts[ip] if attempt > one_hour_ago]
-    
-    # 添加当前失败记录
-    failed_attempts[ip].append(datetime.now())
-    
-    # 检查是否需要锁定
-    if len(failed_attempts[ip]) >= 3:
-        locked_ips[ip] = datetime.now() + timedelta(minutes=15)
-        return True
-    return False
 
 def admin_required(f):
     """管理员权限装饰器"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not session.get('admin_logged_in'):
-            return redirect(url_for('admin_login', next=request.url))
+        if not current_user.is_authenticated:
+            return redirect(url_for('login', next=request.url))
+        if current_user.role != 'admin':
+            abort(403)
         return f(*args, **kwargs)
     return decorated_function
 
@@ -167,11 +140,13 @@ def add_comment(id):
         flash('评论内容不能为空。', 'error')
         return redirect(url_for('post', id=post.id))
 
-    if session.get('admin_logged_in'):
+    if current_user.is_authenticated and current_user.role == 'admin':
+        # 管理员评论
         author_name = '管理员'
         author_email = None
         is_admin = True
     else:
+        # 匿名用户评论
         author_name = (request.form.get('name') or '').strip()
         author_email = (request.form.get('email') or '').strip()
         is_admin = False
@@ -182,7 +157,7 @@ def add_comment(id):
     comment = Comment(
         post_id=post.id,
         author_name=author_name,
-        author_email=author_email if not session.get('admin_logged_in') else None,
+        author_email=author_email,
         content=content,
         is_admin=is_admin,
         ip=ip,
@@ -269,42 +244,92 @@ def delete(id):
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
-    # 检查IP是否被锁定
-    client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR', '127.0.0.1'))
-    
-    if is_ip_locked(client_ip):
-        flash('IP已被锁定，请15分钟后再试', 'error')
-        return render_template('admin_login.html'), 429
-    
-    if request.method == 'POST':
-        password = request.form.get('password', '')
-        next_page = request.form.get('next', url_for('index'))
-        
-        if password == app.config['ADMIN_PASSWORD']:
-            session['admin_logged_in'] = True
-            session.permanent = True
-            flash('登录成功！', 'success')
-            return redirect(next_page)
-        else:
-            # 记录失败尝试
-            is_locked = record_failed_attempt(client_ip)
-            if is_locked:
-                flash('登录失败次数过多，IP已被锁定15分钟', 'error')
-            else:
-                remaining = 3 - len(failed_attempts.get(client_ip, []))
-                flash(f'密码错误，还有{remaining}次尝试机会', 'error')
-    
-    next_page = request.args.get('next', '')
-    return render_template('admin_login.html', next=next_page)
+    return redirect(url_for('login', next=request.args.get('next', '')))
 
 @app.route('/admin/logout')
 def admin_logout():
-    session.pop('admin_logged_in', None)
-    flash('已成功登出', 'info')
+    return redirect(url_for('logout'))
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '')
+        password_confirm = request.form.get('password_confirm', '')
+        
+        # 验证输入
+        if not username or not email or not password:
+            flash('所有字段都是必填的', 'error')
+            return render_template('register.html')
+        
+        if len(username) < 3:
+            flash('用户名至少需要3个字符', 'error')
+            return render_template('register.html')
+        
+        if len(password) < 6:
+            flash('密码至少需要6个字符', 'error')
+            return render_template('register.html')
+        
+        if password != password_confirm:
+            flash('两次输入的密码不一致', 'error')
+            return render_template('register.html')
+        
+        # 检查用户名是否已存在
+        if User.query.filter_by(username=username).first():
+            flash('用户名已被使用', 'error')
+            return render_template('register.html')
+        
+        # 检查邮箱是否已存在
+        if User.query.filter_by(email=email).first():
+            flash('邮箱已被注册', 'error')
+            return render_template('register.html')
+        
+        # 创建新用户
+        user = User(username=username, email=email)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        
+        flash('注册成功！请登录', 'success')
+        return redirect(url_for('login'))
+    
+    return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        next_page = request.form.get('next', url_for('index'))
+        
+        if not username or not password:
+            flash('请输入用户名和密码', 'error')
+            return render_template('login.html')
+        
+        # 查找用户
+        user = User.query.filter_by(username=username).first()
+        
+        if user and user.check_password(password):
+            # 登录成功
+            login_user(user)
+            session.permanent = True
+            flash(f'欢迎回来，{user.username}！', 'success')
+            return redirect(next_page)
+        else:
+            flash('用户名或密码错误', 'error')
+    
+    next_page = request.args.get('next', '')
+    return render_template('login.html', next=next_page)
+
+@app.route('/logout')
+def logout():
+    logout_user()
+    flash('您已成功登出', 'info')
     return redirect(url_for('index'))
 
 
-# ---- 新增：访客与评论模型 ----
+# ---- 模型定义 ----
 class Visit(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     path = db.Column(db.String(255), nullable=False)
@@ -333,15 +358,27 @@ class Comment(db.Model):
         return f'<Comment {self.author_name} on {self.post_id}>'
 
 
-# ---- ✅ 修复重点：初始化数据库表 ----
-# 删除旧的 @app.before_first_request，改为直接执行
-with app.app_context():
-    try:
-        db.create_all()
-    except Exception as e:
-        print(f"创建表时出错: {e}")
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(200), nullable=False)
+    role = db.Column(db.String(20), default='visitor', nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-# 简单的评论限流（内存，进程内）
+    def set_password(self, password):
+        """设置密码（哈希存储）"""
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        """验证密码"""
+        return check_password_hash(self.password_hash, password)
+
+    def __repr__(self):
+        return f'<User {self.username}>'
+
+
+# ---- 评论与访客 ----
 last_comment_time_by_ip = {}
 
 
@@ -353,9 +390,7 @@ def log_visit():
         path = request.path or '/'
         if any([
             path.startswith('/static'),
-            path.startswith('/favicon'),
-            # 如果是管理员登录的POST请求，通常不记录，避免日志杂乱
-            path.startswith('/admin/login') and request.method == 'POST'
+            path.startswith('/favicon')
         ]):
             return
 
@@ -390,6 +425,11 @@ def log_visit():
         # 发生错误回滚，以免影响后续的主业务逻辑
         db.session.rollback()
         print(f"记录访问失败: {e}")
+
+
+@app.errorhandler(403)
+def forbidden(_error):
+    return render_template('403.html'), 403
 
 
 if __name__ == '__main__':

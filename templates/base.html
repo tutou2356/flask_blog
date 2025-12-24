@@ -201,40 +201,17 @@
                     <button id="theme-toggle" class="p-2 rounded-lg hover:bg-slate-100 transition">
                         <i data-lucide="moon" class="w-5 h-5 text-slate-600"></i>
                     </button>
-                    
-                    <!-- 登录状态显示 -->
-                    {% if session.admin_logged_in %}
-                        <!-- 已登录状态 -->
-                        <div class="flex items-center gap-2">
-                            <a href="{{ url_for('create') }}" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition text-sm font-medium">
-                                <i data-lucide="edit-3" class="inline-block w-4 h-4 mr-1"></i>
-                                撰写新文章
-                            </a>
-                            <div class="relative group">
-                                <button class="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-800 px-2 py-1 rounded-md hover:bg-slate-100 transition">
-                                    <i data-lucide="user-check" class="w-4 h-4"></i>
-                                    <span class="hidden md:inline">管理员</span>
-                                    <i data-lucide="chevron-down" class="w-3 h-3"></i>
-                                </button>
-                                <!-- 下拉菜单 -->
-                                <div class="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg border border-slate-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
-                                    <a href="{{ url_for('admin_visits') }}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-md">
-                                        <i data-lucide="bar-chart-3" class="inline-block w-3 h-3 mr-2"></i>
-                                        访问记录
-                                    </a>
-                                    <a href="{{ url_for('admin_logout') }}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-md">
-                                        <i data-lucide="log-out" class="inline-block w-3 h-3 mr-2"></i>
-                                        登出
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
+
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.role == 'admin' %}
+                        <a href="{{ url_for('create') }}" class="text-sm text-slate-600 hover:text-indigo-600">写文章</a>
+                        <a href="{{ url_for('admin_visits') }}" class="text-sm text-slate-600 hover:text-indigo-600">访问记录</a>
+                        {% endif %}
+                        <span class="text-sm text-slate-500">Hi, {{ current_user.username }}</span>
+                        <a href="{{ url_for('logout') }}" class="text-sm text-slate-600 hover:text-indigo-600">登出</a>
                     {% else %}
-                        <!-- 未登录状态 -->
-                        <a href="{{ url_for('admin_login') }}" class="bg-slate-600 text-white px-4 py-2 rounded-md hover:bg-slate-700 transition text-sm font-medium">
-                            <i data-lucide="log-in" class="inline-block w-4 h-4 mr-1"></i>
-                            管理员登录
-                        </a>
+                        <a href="{{ url_for('login') }}" class="text-sm text-slate-600 hover:text-indigo-600">登录</a>
+                        <a href="{{ url_for('register') }}" class="text-sm text-slate-600 hover:text-indigo-600">注册</a>
                     {% endif %}
                 </div>
             </div>

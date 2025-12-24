@@ -29,6 +29,16 @@ python run.py
 
 打开浏览器访问: http://127.0.0.1:5000
 
+### 4. 创建管理员账号（首次）
+
+```bash
+python create_admin.py --username admin --email admin@example.com --password "ChangeMe123"
+```
+
+验证方式：
+- 使用 `/login` 登录管理员账号
+- 打开 `/create` 或 `/admin/visits` 确认拥有管理权限
+
 ## 📁 项目结构
 
 ```
