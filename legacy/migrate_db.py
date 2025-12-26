@@ -1,3 +1,4 @@
+"""Legacy migration helper. Prefer Flask-Migrate/Alembic for new changes."""
 import sqlite3
 from datetime import datetime
 import os

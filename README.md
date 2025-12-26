@@ -19,7 +19,7 @@
 pip install -r requirements.txt
 ```
 
-### 2. 启动应用
+### 2. 启动应用（唯一开发入口）
 
 ```bash
 python run.py
@@ -43,21 +43,54 @@ python create_admin.py --username admin --email admin@example.com --password "Ch
 
 ```
 blog/
-├── app_blog.py          # 主应用文件
+├── app/                # 应用包（factory + 蓝图 + 扩展 + 模型）
+├── migrations/         # Alembic 迁移目录
+├── alembic.ini         # Alembic 配置
+├── legacy/             # 旧迁移脚本存档（已弃用）
+├── wsgi.py             # 生产入口
 ├── run.py              # 启动脚本
-├── migrate_db.py       # 数据库迁移脚本
 ├── requirements.txt    # 依赖文件
-├── blog.db            # SQLite 数据库
-├── templates/         # HTML 模板
-│   ├── base.html      # 基础模板
-│   ├── index.html     # 首页
-│   ├── post.html      # 文章详情
-│   ├── create.html    # 创建文章
-│   ├── edit.html      # 编辑文章
-│   └── search.html    # 搜索结果
-└── static/           # 静态文件
-    └── blog11.jpeg   # 头像图片
+├── blog.db             # SQLite 数据库
+├── templates/          # HTML 模板
+└── static/             # 静态文件
 ```
+
+## 🧩 数据库迁移（Flask-Migrate）
+
+迁移目录已内置，无需重复 `flask db init`。
+
+### 旧库接入（不丢数据）
+1. **备份数据库**：复制 `blog.db` 到安全位置。
+2. 设置环境变量：
+   - PowerShell:
+     ```powershell
+     $env:FLASK_APP = "wsgi.py"
+     ```
+   - Bash:
+     ```bash
+     export FLASK_APP=wsgi.py
+     ```
+3. 标记当前库为基线（不执行建表）：
+   ```bash
+   flask db stamp head
+   ```
+4. 验证迁移状态：
+   ```bash
+   flask db current
+   ```
+
+之后的结构变更使用：
+```bash
+flask db migrate -m "your message"
+flask db upgrade
+```
+
+### 新库初始化
+```bash
+flask db upgrade
+```
+
+> `legacy/migrate_db.py` 已弃用（已改用 Flask-Migrate）。
 
 ## 🎯 使用说明
 
@@ -74,6 +107,16 @@ blog/
 
 ### 深色模式
 点击导航栏右侧的月亮/太阳图标切换主题
+
+## 🔐 权限模型与访问控制点
+
+- **角色**：`admin` 与普通访客
+- **访问策略**：
+  - 未登录访问 admin-only 路由 → 重定向到 `/login`
+  - 已登录但非 admin → 返回 403
+- **控制点**：
+  - 路由统一通过 `@admin_required` 控制：`/create`、`/<id>/edit`、`/<id>/delete`、`/comment/<id>/delete`、`/admin/visits`
+  - 模板入口仅对管理员显示（导航栏写文章、访问记录，文章编辑/删除）
 
 ## 🛠️ 技术栈
 

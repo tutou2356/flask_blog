@@ -12,3 +12,5 @@ __pycache__/
 # IDE 文件
 .vscode/
 .idea/
+# 数据库备份
+*.db.bak.*

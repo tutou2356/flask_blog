@@ -182,11 +182,11 @@
     <nav class="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-10">
         <div class="max-w-6xl mx-auto px-4">
             <div class="flex justify-between items-center h-16">
-                <a href="{{ url_for('index') }}" class="text-2xl font-bold text-indigo-600">Huihui 的家</a>
+                <a href="{{ url_for('blog.index') }}" class="text-2xl font-bold text-indigo-600">Huihui 的家</a>
                 
                 <!-- 搜索框 -->
                 <div class="hidden md:flex flex-1 max-w-md mx-8">
-                    <form action="{{ url_for('search') }}" method="get" class="w-full">
+                    <form action="{{ url_for('blog.search') }}" method="get" class="w-full">
                         <div class="relative">
                             <input type="text" name="q" placeholder="搜索文章..." 
                                    class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
@@ -204,14 +204,14 @@
 
                     {% if current_user.is_authenticated %}
                         {% if current_user.role == 'admin' %}
-                        <a href="{{ url_for('create') }}" class="text-sm text-slate-600 hover:text-indigo-600">写文章</a>
-                        <a href="{{ url_for('admin_visits') }}" class="text-sm text-slate-600 hover:text-indigo-600">访问记录</a>
+                        <a href="{{ url_for('blog.create') }}" class="text-sm text-slate-600 hover:text-indigo-600">写文章</a>
+                        <a href="{{ url_for('admin.admin_visits') }}" class="text-sm text-slate-600 hover:text-indigo-600">访问记录</a>
                         {% endif %}
                         <span class="text-sm text-slate-500">Hi, {{ current_user.username }}</span>
-                        <a href="{{ url_for('logout') }}" class="text-sm text-slate-600 hover:text-indigo-600">登出</a>
+                        <a href="{{ url_for('auth.logout') }}" class="text-sm text-slate-600 hover:text-indigo-600">登出</a>
                     {% else %}
-                        <a href="{{ url_for('login') }}" class="text-sm text-slate-600 hover:text-indigo-600">登录</a>
-                        <a href="{{ url_for('register') }}" class="text-sm text-slate-600 hover:text-indigo-600">注册</a>
+                        <a href="{{ url_for('auth.login') }}" class="text-sm text-slate-600 hover:text-indigo-600">登录</a>
+                        <a href="{{ url_for('auth.register') }}" class="text-sm text-slate-600 hover:text-indigo-600">注册</a>
                     {% endif %}
                 </div>
             </div>

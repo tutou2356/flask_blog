@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}权限不足{% endblock %}
+{% block title %}请求错误{% endblock %}
 
 {% block content %}
 <main class="max-w-3xl mx-auto px-4 py-12">
     <div class="bg-white p-8 rounded-xl shadow-md text-center">
-        <h1 class="text-2xl font-bold text-slate-800">403 权限不足</h1>
-        <p class="text-slate-600 mt-2">{{ message or '你没有访问该页面的权限。' }}</p>
+        <h1 class="text-2xl font-bold text-slate-800">400 请求错误</h1>
+        <p class="text-slate-600 mt-2">{{ message or '请求无效，请刷新页面后重试。' }}</p>
         <div class="mt-6">
             <a href="{{ url_for('blog.index') }}" class="text-indigo-600 hover:text-indigo-800">返回首页</a>
         </div>

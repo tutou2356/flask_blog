@@ -1,9 +1,8 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `app_blog.py` hosts the Flask app, models, and routes.
 - `run.py` boots the app and initializes `blog.db` if missing.
-- `migrate_db.py` performs SQLite schema updates with backups.
+- `legacy/migrate_db.py` is deprecated (migrations now use Flask-Migrate).
 - `templates/` contains Jinja2 HTML templates.
 - `static/` holds assets (e.g., `static/blog11.jpeg`).
 - `blog.db` is a local SQLite database (do not commit regenerated copies).
@@ -11,8 +10,7 @@
 ## Build, Test, and Development Commands
 - `pip install -r requirements.txt` installs dependencies.
 - `python run.py` starts the dev server on `http://127.0.0.1:5000`.
-- `flask init-db` (with `FLASK_APP=app_blog.py`) creates tables.
-- `python migrate_db.py` migrates an existing `blog.db` and writes a timestamped backup.
+- `flask init-db` (with `FLASK_APP=wsgi.py`) creates tables.
 - `python create_admin.py --username admin --email admin@example.com --password "ChangeMe123"` creates an admin user.
 
 ## Coding Style & Naming Conventions

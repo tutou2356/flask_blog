@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""
-博客应用启动脚本
-"""
+"""博客应用启动脚本"""
 import os
-from app_blog import app, db
+
+from app import create_app
+from app.extensions import db
+
+app = create_app()
 
 def init_database():
     """初始化数据库"""
