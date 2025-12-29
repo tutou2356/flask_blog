@@ -90,7 +90,6 @@ flask db upgrade
 flask db upgrade
 ```
 
-> `legacy/migrate_db.py` 已弃用（已改用 Flask-Migrate）。
 
 ## 🎯 使用说明
 
