@@ -21,7 +21,7 @@ class PostCreateForm(FlaskForm):
 class PostEditForm(FlaskForm):
     title = StringField('标题', validators=[DataRequired(), Length(max=100)])
     category = SelectField('分类', choices=CATEGORY_CHOICES, validators=[Optional()])
-    tags = StringField('标签', validators=[Optional(), Length(max=255)])
+    tags = HiddenField('标签', validators=[Optional(), Length(max=255)])
     content = TextAreaField('内容', validators=[DataRequired()])
 
 

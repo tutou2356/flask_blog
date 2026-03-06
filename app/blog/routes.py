@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 import bleach
 import markdown
-from flask import abort, flash, redirect, render_template, request, url_for
+from flask import abort, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user
 from sqlalchemy import or_
 
@@ -125,6 +125,19 @@ def search():
         category=category,
         delete_post_form=delete_post_form,
     )
+
+
+@blog_bp.route('/api/tags')
+def api_tags():
+    """Return all unique tags used across posts, sorted alphabetically."""
+    rows = db.session.query(Post.tags).filter(Post.tags != '', Post.tags.isnot(None)).all()
+    tag_set = set()
+    for (tags_str,) in rows:
+        for t in tags_str.split(','):
+            t = t.strip()
+            if t:
+                tag_set.add(t)
+    return jsonify(sorted(tag_set))
 
 
 @blog_bp.route('/post/<int:id>')

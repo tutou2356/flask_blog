@@ -32,22 +32,25 @@
                 {% endfor %}
             </div>
             <div>
-                <label for="tags" class="block text-sm font-medium text-slate-700">标签</label>
-                {{ form.tags(
-                    id='tags',
-                    class='mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500',
-                    placeholder='Python, Flask, 前端...'
-                ) }}
-                <p class="text-xs text-slate-500 mt-1">多个标签用逗号分隔</p>
-                {% for error in form.tags.errors %}
-                    <p class="text-sm text-red-600 mt-1">{{ error }}</p>
-                {% endfor %}
+                <label for="tag-text-input" class="block text-sm font-medium text-slate-700">标签</label>
+                <div class="mt-1 relative">
+                    <div id="selected-tags" class="flex flex-wrap gap-2 min-h-[2.5rem] p-2 border border-slate-300 rounded-md bg-slate-50 cursor-text" onclick="document.getElementById('tag-text-input').focus()">
+                        <input id="tag-text-input" type="text" placeholder="输入标签后按回车添加..."
+                               class="flex-1 min-w-[120px] border-0 bg-transparent outline-none text-sm p-0 focus:ring-0"
+                               autocomplete="off">
+                    </div>
+                    <div id="tag-suggestions" class="absolute z-20 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-48 overflow-y-auto hidden"></div>
+                    {{ form.tags(id='tags-input') }}
+                    <p class="text-xs text-slate-500 mt-1">输入后按回车添加，或从建议中选择已有标签</p>
+                    {% for error in form.tags.errors %}
+                        <p class="text-sm text-red-600 mt-1">{{ error }}</p>
+                    {% endfor %}
+                </div>
             </div>
         </div>
         
         <div>
             <label for="content" class="block text-sm font-medium text-slate-700">内容</label>
-            <!-- ❗️❗️❗️ 关键：在 textarea 中间直接放入旧内容 -->
             {{ form.content(
                 id='content',
                 rows='15',
@@ -62,4 +65,108 @@
         </div>
     </form>
 
+    <script>
+        (function() {
+            const container = document.getElementById('selected-tags');
+            const textInput = document.getElementById('tag-text-input');
+            const hiddenInput = document.getElementById('tags-input');
+            const suggestionsDiv = document.getElementById('tag-suggestions');
+            let selectedTags = [];
+            let allTags = [];
+
+            const initial = hiddenInput.value || '';
+            if (initial.trim()) {
+                initial.split(',').forEach(t => {
+                    t = t.trim();
+                    if (t) selectedTags.push(t);
+                });
+                renderTags();
+            }
+
+            fetch('{{ url_for("blog.api_tags") }}')
+                .then(r => r.json())
+                .then(tags => { allTags = tags; })
+                .catch(() => {});
+
+            function addTag(tag) {
+                tag = tag.trim();
+                if (!tag || selectedTags.includes(tag)) return;
+                selectedTags.push(tag);
+                renderTags();
+                syncHidden();
+                textInput.value = '';
+                hideSuggestions();
+            }
+
+            function removeTag(tag) {
+                selectedTags = selectedTags.filter(t => t !== tag);
+                renderTags();
+                syncHidden();
+            }
+
+            function renderTags() {
+                container.querySelectorAll('.tag-pill').forEach(el => el.remove());
+                selectedTags.forEach(tag => {
+                    const pill = document.createElement('span');
+                    pill.className = 'tag-pill bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs flex items-center gap-1';
+                    pill.innerHTML = `${tag}<button type="button" class="text-indigo-600 hover:text-indigo-800 ml-1 font-bold">&times;</button>`;
+                    pill.querySelector('button').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        removeTag(tag);
+                    });
+                    container.insertBefore(pill, textInput);
+                });
+            }
+
+            function syncHidden() {
+                hiddenInput.value = selectedTags.join(', ');
+            }
+
+            function showSuggestions(filter) {
+                const lower = filter.toLowerCase();
+                const matches = allTags.filter(t =>
+                    t.toLowerCase().includes(lower) && !selectedTags.includes(t)
+                ).slice(0, 10);
+                if (!matches.length) { hideSuggestions(); return; }
+                suggestionsDiv.innerHTML = matches.map(t =>
+                    `<div class="px-3 py-2 text-sm cursor-pointer hover:bg-indigo-50 hover:text-indigo-700 transition">${t}</div>`
+                ).join('');
+                suggestionsDiv.querySelectorAll('div').forEach((el, i) => {
+                    el.addEventListener('mousedown', (e) => {
+                        e.preventDefault();
+                        addTag(matches[i]);
+                    });
+                });
+                suggestionsDiv.classList.remove('hidden');
+            }
+
+            function hideSuggestions() {
+                suggestionsDiv.classList.add('hidden');
+            }
+
+            textInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ',') {
+                    e.preventDefault();
+                    addTag(textInput.value);
+                }
+                if (e.key === 'Backspace' && !textInput.value && selectedTags.length) {
+                    removeTag(selectedTags[selectedTags.length - 1]);
+                }
+            });
+
+            textInput.addEventListener('input', () => {
+                const val = textInput.value.trim();
+                if (val.length > 0) showSuggestions(val);
+                else hideSuggestions();
+            });
+
+            textInput.addEventListener('blur', () => {
+                setTimeout(hideSuggestions, 150);
+            });
+
+            textInput.addEventListener('focus', () => {
+                if (textInput.value.trim()) showSuggestions(textInput.value.trim());
+            });
+        })();
+    </script>
 {% endblock %}
