@@ -15,7 +15,7 @@
             搜索结果
         {% endif %}
     </h1>
-    <p class="text-slate-600 mt-2">找到 {{ posts|length }} 篇文章</p>
+    <p class="text-slate-600 mt-2">找到 {{ pagination.total if pagination else posts|length }} 篇文章</p>
 </div>
 
 {% if posts %}
@@ -38,13 +38,14 @@
                 
                 {% if current_user.is_authenticated and current_user.role == 'admin' %}
                 <div class="flex gap-2">
-                    <a href="{{ url_for('edit', id=post.id) }}" 
+                    <a href="{{ url_for('blog.edit', id=post.id) }}" 
                        class="text-indigo-600 hover:text-indigo-800 text-sm flex items-center gap-1">
                         <i data-lucide="edit-2" class="w-4 h-4"></i>
                         编辑
                     </a>
-                    <form method="post" action="{{ url_for('delete', id=post.id) }}" class="inline" 
+                    <form method="post" action="{{ url_for('blog.delete', id=post.id) }}" class="inline" 
                           onsubmit="return confirm('确定要删除这篇文章吗？')">
+                        {{ delete_post_form.hidden_tag() }}
                         <button type="submit" class="text-red-600 hover:text-red-800 text-sm flex items-center gap-1">
                             <i data-lucide="trash-2" class="w-4 h-4"></i>
                             删除
@@ -54,7 +55,7 @@
                 {% endif %}
             </div>
             
-            <a href="{{ url_for('post', id=post.id) }}">
+            <a href="{{ url_for('blog.post', id=post.id) }}">
                 <h2 class="text-2xl font-bold text-slate-800 hover:text-indigo-600 transition">{{ post.title }}</h2>
             </a>
             
@@ -74,6 +75,35 @@
         </article>
         {% endfor %}
     </div>
+    {% if pagination and pagination.pages > 1 %}
+    <nav class="mt-8 flex justify-center" aria-label="分页导航">
+        <ul class="flex items-center gap-1">
+            {% if pagination.has_prev %}
+            <li>
+                <a href="{{ url_for('blog.search', q=query, category=category, page=pagination.prev_num) }}"
+                   class="px-3 py-2 text-sm rounded-lg border border-slate-300 hover:bg-indigo-50 hover:text-indigo-600 transition">上一页</a>
+            </li>
+            {% endif %}
+            {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                {% if p %}
+                    {% if p == pagination.page %}
+                    <li><span class="px-3 py-2 text-sm rounded-lg bg-indigo-600 text-white font-medium">{{ p }}</span></li>
+                    {% else %}
+                    <li><a href="{{ url_for('blog.search', q=query, category=category, page=p) }}" class="px-3 py-2 text-sm rounded-lg border border-slate-300 hover:bg-indigo-50 hover:text-indigo-600 transition">{{ p }}</a></li>
+                    {% endif %}
+                {% else %}
+                    <li><span class="px-2 py-2 text-slate-400">...</span></li>
+                {% endif %}
+            {% endfor %}
+            {% if pagination.has_next %}
+            <li>
+                <a href="{{ url_for('blog.search', q=query, category=category, page=pagination.next_num) }}"
+                   class="px-3 py-2 text-sm rounded-lg border border-slate-300 hover:bg-indigo-50 hover:text-indigo-600 transition">下一页</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
 {% else %}
     <div class="text-center py-12">
         <i data-lucide="search-x" class="w-16 h-16 text-slate-400 mx-auto mb-4"></i>
@@ -85,7 +115,7 @@
                 该分类下暂无文章
             {% endif %}
         </p>
-        <a href="{{ url_for('index') }}" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">
+        <a href="{{ url_for('blog.index') }}" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">
             返回首页
         </a>
     </div>

@@ -12,3 +12,15 @@ __pycache__/
 # IDE 文件
 .vscode/
 .idea/
+.cursor/
+
+# 数据库备份
+*.db.bak.*
+
+# 虚拟环境
+venv/
+.venv/
+
+# 部署产物
+*.log
+docker-compose.override.yml
