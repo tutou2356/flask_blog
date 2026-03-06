@@ -1,5 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
+import bleach
 import markdown
 from flask import abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user
@@ -14,11 +15,35 @@ from ..models import Comment, Post
 
 last_comment_time_by_ip = {}
 
+BLEACH_ALLOWED_TAGS = [
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'p', 'br', 'hr', 'blockquote', 'pre', 'code',
+    'ul', 'ol', 'li', 'dl', 'dt', 'dd',
+    'table', 'thead', 'tbody', 'tr', 'th', 'td',
+    'a', 'img', 'strong', 'em', 'del', 'sup', 'sub',
+    'span', 'div',
+]
+BLEACH_ALLOWED_ATTRS = {
+    '*': ['class', 'id'],
+    'a': ['href', 'title', 'rel'],
+    'img': ['src', 'alt', 'title', 'width', 'height'],
+    'td': ['align'], 'th': ['align'],
+}
 
-def _render_post_detail(post_item, comment_form=None, delete_post_form=None, delete_comment_form=None):
+
+def _sanitize_html(raw_html: str) -> str:
+    return bleach.clean(
+        raw_html,
+        tags=BLEACH_ALLOWED_TAGS,
+        attributes=BLEACH_ALLOWED_ATTRS,
+        strip=True,
+    )
+
+
+def _render_markdown(text: str) -> str:
     try:
         html_content = markdown.markdown(
-            post_item.content,
+            text,
             extensions=[
                 'markdown.extensions.codehilite',
                 'markdown.extensions.fenced_code',
@@ -32,9 +57,15 @@ def _render_post_detail(post_item, comment_form=None, delete_post_form=None, del
                 }
             },
         )
-    except Exception as exc:
-        print(f"Markdown错误: {exc}")
-        html_content = markdown.markdown(post_item.content)
+    except Exception:
+        from flask import current_app
+        current_app.logger.exception("Markdown 渲染异常")
+        html_content = markdown.markdown(text)
+    return _sanitize_html(html_content)
+
+
+def _render_post_detail(post_item, comment_form=None, delete_post_form=None, delete_comment_form=None):
+    html_content = _render_markdown(post_item.content)
 
     comments = (
         Comment.query.filter_by(post_id=post_item.id)
@@ -52,11 +83,15 @@ def _render_post_detail(post_item, comment_form=None, delete_post_form=None, del
     )
 
 
+PER_PAGE = 10
+
+
 @blog_bp.route('/')
 def index():
-    posts = Post.query.order_by(Post.id.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    pagination = Post.query.order_by(Post.id.desc()).paginate(page=page, per_page=PER_PAGE, error_out=False)
     delete_post_form = DeletePostForm()
-    return render_template('index.html', posts=posts, delete_post_form=delete_post_form)
+    return render_template('index.html', posts=pagination.items, pagination=pagination, delete_post_form=delete_post_form)
 
 
 @blog_bp.route('/search')
@@ -78,12 +113,14 @@ def search():
     if category:
         posts = posts.filter(Post.category == category)
 
-    posts = posts.order_by(Post.id.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    pagination = posts.order_by(Post.id.desc()).paginate(page=page, per_page=PER_PAGE, error_out=False)
 
     delete_post_form = DeletePostForm()
     return render_template(
         'search.html',
-        posts=posts,
+        posts=pagination.items,
+        pagination=pagination,
         query=query,
         category=category,
         delete_post_form=delete_post_form,
@@ -102,7 +139,7 @@ def add_comment(id):
     form = CommentForm()
     ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR', ''))
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     last = last_comment_time_by_ip.get(ip)
     if last and (now - last).total_seconds() < 30:
         form.content.errors.append('评论过于频繁，请稍后再试。')

@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from flask import flash, redirect, render_template, request, session, url_for
 from flask_login import login_user, logout_user
 
@@ -5,6 +7,14 @@ from . import auth_bp
 from ..extensions import db
 from ..forms import LoginForm, RegisterForm
 from ..models import User
+
+
+def _is_safe_url(target: str) -> bool:
+    """Reject absolute / external URLs to prevent open-redirect attacks."""
+    if not target:
+        return False
+    parsed = urlparse(target)
+    return parsed.scheme == '' and parsed.netloc == '' and not target.startswith('//')
 
 
 @auth_bp.route('/admin/login', methods=['GET', 'POST'])
@@ -41,7 +51,9 @@ def login():
     if form.validate_on_submit():
         username = form.username.data.strip()
         password = form.password.data
-        next_page = form.next.data or url_for('blog.index')
+        next_page = form.next.data
+        if not _is_safe_url(next_page):
+            next_page = url_for('blog.index')
 
         user = User.query.filter_by(username=username).first()
 

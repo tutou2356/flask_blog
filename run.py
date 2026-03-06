@@ -23,4 +23,4 @@ if __name__ == '__main__':
     print("📝 管理后台: 直接在网页上创建和编辑文章")
     print("🎨 功能特性: Markdown支持、分类标签、搜索、深色模式")
     print("-" * 50)
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=app.config.get('DEBUG', False), host='0.0.0.0', port=5000)

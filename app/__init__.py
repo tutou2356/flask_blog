@@ -1,5 +1,5 @@
 import os
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 from dotenv import load_dotenv
 from flask import Flask, render_template, request
@@ -25,6 +25,11 @@ def create_app():
     app.config.from_object(config_class)
     app.config.setdefault('PERMANENT_SESSION_LIFETIME', timedelta(minutes=30))
 
+    if env == 'production' and app.config.get('SECRET_KEY') in (None, '', 'dev'):
+        raise RuntimeError(
+            "生产环境必须通过环境变量设置安全的 SECRET_KEY，不能使用默认值 'dev'。"
+        )
+
     db.init_app(app)
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
@@ -42,6 +47,10 @@ def create_app():
     app.register_blueprint(auth_bp)
     app.register_blueprint(blog_bp)
     app.register_blueprint(admin_bp)
+
+    @app.context_processor
+    def inject_globals():
+        return {'now': lambda: datetime.now(timezone.utc)}
 
     @app.cli.command('init-db')
     def init_db_command():
@@ -84,12 +93,13 @@ def create_app():
             db.session.commit()
         except Exception as exc:
             db.session.rollback()
-            print(f"记录访问失败: {exc}")
+            app.logger.warning("记录访问失败: %s", exc)
 
     @app.errorhandler(403)
     def forbidden(error):
         app.logger.warning("403 Forbidden: %s", error)
-        return render_template('403.html'), 403
+        message = getattr(error, 'description', None)
+        return render_template('403.html', message=message), 403
 
     @app.errorhandler(400)
     def bad_request(error):

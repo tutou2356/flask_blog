@@ -28,7 +28,7 @@ class PostEditForm(FlaskForm):
 class CommentForm(FlaskForm):
     name = StringField('昵称', validators=[Optional(), Length(max=80)])
     email = StringField('邮箱', validators=[Optional(), Email(), Length(max=120)])
-    content = TextAreaField('内容', validators=[DataRequired()])
+    content = TextAreaField('内容', validators=[DataRequired(), Length(max=2000, message='评论内容不能超过2000字')])
 
 
 class DeletePostForm(FlaskForm):

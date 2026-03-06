@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{% endblock %} - Huihui 的家</title>
-    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.tailwindcss.com/3.4.1?plugins=typography"></script>
+    <script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.min.js"></script>
     
     <!-- 添加 Pygments 代码高亮样式 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
@@ -184,22 +184,28 @@
             <div class="flex justify-between items-center h-16">
                 <a href="{{ url_for('blog.index') }}" class="text-2xl font-bold text-indigo-600">Huihui 的家</a>
                 
-                <!-- 搜索框 -->
+                <!-- 搜索框（桌面端） -->
                 <div class="hidden md:flex flex-1 max-w-md mx-8">
                     <form action="{{ url_for('blog.search') }}" method="get" class="w-full">
                         <div class="relative">
-                            <input type="text" name="q" placeholder="搜索文章..." 
+                            <label for="desktop-search" class="sr-only">搜索文章</label>
+                            <input id="desktop-search" type="text" name="q" placeholder="搜索文章..." 
                                    class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                                    value="{{ request.args.get('q', '') }}">
-                            <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400"></i>
+                            <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400" aria-hidden="true"></i>
                         </div>
                     </form>
                 </div>
                 
                 <div class="flex items-center gap-4">
+                    <!-- 移动端搜索按钮 -->
+                    <button id="mobile-search-toggle" class="md:hidden p-2 rounded-lg hover:bg-slate-100 transition" aria-label="打开搜索">
+                        <i data-lucide="search" class="w-5 h-5 text-slate-600" aria-hidden="true"></i>
+                    </button>
+
                     <!-- 深色模式切换按钮 -->
-                    <button id="theme-toggle" class="p-2 rounded-lg hover:bg-slate-100 transition">
-                        <i data-lucide="moon" class="w-5 h-5 text-slate-600"></i>
+                    <button id="theme-toggle" class="p-2 rounded-lg hover:bg-slate-100 transition" aria-label="切换深色/浅色模式">
+                        <i data-lucide="moon" class="w-5 h-5 text-slate-600" aria-hidden="true"></i>
                     </button>
 
                     {% if current_user.is_authenticated %}
@@ -217,6 +223,19 @@
             </div>
         </div>
     </nav>
+
+    <!-- 移动端搜索栏 -->
+    <div id="mobile-search-bar" class="md:hidden hidden bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3">
+        <form action="{{ url_for('blog.search') }}" method="get">
+            <div class="relative">
+                <label for="mobile-search" class="sr-only">搜索文章</label>
+                <input id="mobile-search" type="text" name="q" placeholder="搜索文章..."
+                       class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                       value="{{ request.args.get('q', '') }}">
+                <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400" aria-hidden="true"></i>
+            </div>
+        </form>
+    </div>
 
     <!-- 全局消息提示 -->
     <div class="max-w-6xl mx-auto px-4 mt-4 space-y-2">
@@ -257,6 +276,12 @@
     </div>
     {% endif %}
 
+    <footer class="mt-16 py-8 border-t border-slate-200 text-center text-sm text-slate-500">
+        <div class="max-w-6xl mx-auto px-4">
+            <p>&copy; {{ now().year if now else 2026 }} Huihui 的家 &middot; Powered by Flask</p>
+        </div>
+    </footer>
+
     <script>
         // 深色模式切换功能
         const themeToggle = document.getElementById('theme-toggle');
@@ -285,14 +310,23 @@
             lucide.createIcons();
         });
         
+        // 移动端搜索切换
+        const mobileSearchToggle = document.getElementById('mobile-search-toggle');
+        const mobileSearchBar = document.getElementById('mobile-search-bar');
+        if (mobileSearchToggle && mobileSearchBar) {
+            mobileSearchToggle.addEventListener('click', () => {
+                mobileSearchBar.classList.toggle('hidden');
+                if (!mobileSearchBar.classList.contains('hidden')) {
+                    mobileSearchBar.querySelector('input').focus();
+                }
+            });
+        }
+
         // 初始化代码高亮
         document.addEventListener('DOMContentLoaded', function() {
-            // 如果使用 highlight.js
             if (typeof hljs !== 'undefined') {
                 hljs.highlightAll();
             }
-            
-            // 初始化图标
             lucide.createIcons();
         });
     </script>
