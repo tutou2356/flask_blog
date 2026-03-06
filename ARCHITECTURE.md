@@ -2,11 +2,13 @@
 
 ## 组件概览
 
-- `app/__init__.py`：应用工厂、扩展初始化、错误处理、访问记录
-- `app/blog/`：博客内容、评论等读写路由
-- `app/admin/`：后台访问记录
-- `app/auth/`：注册、登录、登出
-- `templates/`：页面模板与错误页
+- `app/__init__.py`：应用工厂、扩展初始化、错误处理、访问记录、生产环境 SECRET_KEY 校验
+- `app/config.py`：BaseConfig / DevConfig / ProdConfig 分环境配置
+- `app/blog/`：博客内容 CRUD、评论、搜索（含分页）、Markdown 渲染 + bleach 消毒
+- `app/admin/`：后台访问记录、`@admin_required` 装饰器
+- `app/auth/`：注册、登录（含开放重定向防御）、登出
+- `app/models.py`：Post（含 comments 级联关系）、Comment、Visit、User
+- `templates/`：Jinja2 模板（base 布局 + 错误页），支持深色模式和移动端搜索
 
 ## 权限模型与访问控制点
 
@@ -23,7 +25,16 @@
   - `GET /admin/visits`
 - **模板入口**：导航栏与文章管理按钮仅对管理员显示
 
+## 安全措施
+
+- **XSS 防护**：Markdown 输出经 bleach 白名单消毒后再通过 `| safe` 渲染
+- **CSRF 保护**：全局 CSRFProtect，所有 POST 表单包含 hidden_tag
+- **开放重定向防御**：登录 next 参数校验，拒绝外部 URL
+- **SECRET_KEY**：生产环境启动时强制校验，不允许使用默认值
+- **评论限流**：同 IP 30 秒内限一条，内容限制 2000 字
+
 ## 错误处理
 
-- 400/403/404/500 均渲染统一样式页面（`templates/400.html`、`403.html`、`404.html`、`500.html`）
+- 400/403/404/500 均渲染统一样式页面
 - CSRF 失败返回 400 并提示刷新重试
+- 访问记录异常使用 `app.logger` 记录，不影响正常请求
