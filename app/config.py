@@ -12,6 +12,9 @@ class BaseConfig:
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev')
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
+    BLOG_IMAGE_UPLOAD_SUBDIR = os.getenv('BLOG_IMAGE_UPLOAD_SUBDIR', 'uploads/posts')
+    BLOG_IMAGE_ALLOWED_EXTENSIONS = ('png', 'jpg', 'jpeg', 'gif', 'webp')
+    BLOG_IMAGE_MAX_BYTES = int(os.getenv('BLOG_IMAGE_MAX_BYTES', 5 * 1024 * 1024))
 
 
 class DevConfig(BaseConfig):

@@ -24,6 +24,11 @@ def create_app():
     config_class = ProdConfig if env == 'production' else DevConfig
     app.config.from_object(config_class)
     app.config.setdefault('PERMANENT_SESSION_LIFETIME', timedelta(minutes=30))
+    app.config.setdefault(
+        'BLOG_IMAGE_UPLOAD_FOLDER',
+        os.path.join(app.static_folder, app.config['BLOG_IMAGE_UPLOAD_SUBDIR']),
+    )
+    os.makedirs(app.config['BLOG_IMAGE_UPLOAD_FOLDER'], exist_ok=True)
 
     if env == 'production' and app.config.get('SECRET_KEY') in (None, '', 'dev'):
         raise RuntimeError(
