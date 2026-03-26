@@ -1,10 +1,13 @@
+import os
+import uuid
 from datetime import datetime, timezone
 
 import bleach
 import markdown
-from flask import abort, flash, jsonify, redirect, render_template, request, url_for
+from flask import abort, current_app, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user
 from sqlalchemy import or_
+from werkzeug.utils import secure_filename
 
 from . import blog_bp
 from ..admin import admin_required
@@ -29,6 +32,18 @@ BLEACH_ALLOWED_ATTRS = {
     'img': ['src', 'alt', 'title', 'width', 'height'],
     'td': ['align'], 'th': ['align'],
 }
+
+
+def _allowed_image_file(filename: str) -> bool:
+    if not filename or '.' not in filename:
+        return False
+    ext = filename.rsplit('.', 1)[1].lower()
+    return ext in current_app.config['BLOG_IMAGE_ALLOWED_EXTENSIONS']
+
+
+def _build_image_markdown(url: str, alt_text: str) -> str:
+    alt = (alt_text or 'image').strip() or 'image'
+    return f'![{alt}]({url})'
 
 
 def _sanitize_html(raw_html: str) -> str:
@@ -58,7 +73,6 @@ def _render_markdown(text: str) -> str:
             },
         )
     except Exception:
-        from flask import current_app
         current_app.logger.exception("Markdown 渲染异常")
         html_content = markdown.markdown(text)
     return _sanitize_html(html_content)
@@ -138,6 +152,40 @@ def api_tags():
             if t:
                 tag_set.add(t)
     return jsonify(sorted(tag_set))
+
+
+@blog_bp.route('/api/upload-image', methods=['POST'])
+@admin_required
+def upload_image():
+    max_bytes = current_app.config['BLOG_IMAGE_MAX_BYTES']
+    if request.content_length and request.content_length > max_bytes:
+        return jsonify({'error': f'图片不能超过 {max_bytes // (1024 * 1024)}MB。'}), 400
+
+    image = request.files.get('image')
+    if image is None or not image.filename:
+        return jsonify({'error': '请选择要上传的图片。'}), 400
+
+    if not _allowed_image_file(image.filename):
+        return jsonify({'error': '仅支持 PNG、JPG、JPEG、GIF、WEBP 图片。'}), 400
+
+    upload_folder = current_app.config['BLOG_IMAGE_UPLOAD_FOLDER']
+    os.makedirs(upload_folder, exist_ok=True)
+
+    original_name = secure_filename(image.filename)
+    stem, ext = os.path.splitext(original_name)
+    stored_name = f'{(stem or "image")[:60]}-{uuid.uuid4().hex[:12]}{ext.lower()}'
+    image.save(os.path.join(upload_folder, stored_name))
+
+    image_url = url_for(
+        'static',
+        filename=f"{current_app.config['BLOG_IMAGE_UPLOAD_SUBDIR']}/{stored_name}",
+    )
+    alt_text = request.form.get('alt', '')
+
+    return jsonify({
+        'url': image_url,
+        'markdown': _build_image_markdown(image_url, alt_text),
+    })
 
 
 @blog_bp.route('/post/<int:id>')
