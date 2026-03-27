@@ -1,3 +1,4 @@
+import html
 import os
 import uuid
 from datetime import datetime, timezone
@@ -44,6 +45,13 @@ def _allowed_image_file(filename: str) -> bool:
 def _build_image_markdown(url: str, alt_text: str) -> str:
     alt = (alt_text or 'image').strip() or 'image'
     return f'![{alt}]({url})'
+
+
+def _build_image_html(url: str, alt_text: str, width: int = 100) -> str:
+    alt = html.escape(bleach.clean((alt_text or 'image').strip() or 'image', strip=True), quote=True)
+    width = max(20, min(100, int(width or 100)))
+    safe_url = html.escape(bleach.clean(url, tags=[], attributes={}, strip=True), quote=True)
+    return f'<img src="{safe_url}" alt="{alt}" width="{width}%">'
 
 
 def _sanitize_html(raw_html: str) -> str:
@@ -184,7 +192,18 @@ def upload_image():
 
     return jsonify({
         'url': image_url,
+        'alt': alt_text,
+        'html': _build_image_html(image_url, alt_text),
         'markdown': _build_image_markdown(image_url, alt_text),
+    })
+
+
+@blog_bp.route('/api/render-markdown', methods=['POST'])
+@admin_required
+def render_preview():
+    content = request.form.get('content', '')
+    return jsonify({
+        'html': _render_markdown(content),
     })
 
 
