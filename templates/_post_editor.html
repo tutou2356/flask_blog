@@ -1,0 +1,608 @@
+<form method="post" class="bg-white p-6 rounded-lg shadow-md space-y-6" data-upload-url="{{ url_for('blog.upload_image') }}" data-preview-url="{{ url_for('blog.render_preview') }}">
+    {{ form.hidden_tag() }}
+    <div>
+        <label for="title" class="block text-sm font-medium text-slate-700">标题</label>
+        {{ form.title(
+            id='title',
+            class='mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500'
+        ) }}
+        {% for error in form.title.errors %}
+            <p class="text-sm text-red-600 mt-1">{{ error }}</p>
+        {% endfor %}
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+            <label for="category" class="block text-sm font-medium text-slate-700">分类</label>
+            {{ form.category(
+                id='category',
+                class='mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500'
+            ) }}
+            {% for error in form.category.errors %}
+                <p class="text-sm text-red-600 mt-1">{{ error }}</p>
+            {% endfor %}
+        </div>
+        <div>
+            <label for="tag-text-input" class="block text-sm font-medium text-slate-700">标签</label>
+            <div class="mt-1 relative">
+                <div id="selected-tags" class="flex flex-wrap gap-2 min-h-[2.5rem] p-2 border border-slate-300 rounded-md bg-slate-50 cursor-text" onclick="document.getElementById('tag-text-input').focus()">
+                    <input id="tag-text-input" type="text" placeholder="输入标签后按回车添加..." class="flex-1 min-w-[120px] border-0 bg-transparent outline-none text-sm p-0 focus:ring-0" autocomplete="off">
+                </div>
+                <div id="tag-suggestions" class="absolute z-20 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-48 overflow-y-auto hidden"></div>
+                {{ form.tags(id='tags-input') }}
+                <p class="text-xs text-slate-500 mt-1">输入后按回车添加，或从建议中选择已有标签</p>
+                {% for error in form.tags.errors %}
+                    <p class="text-sm text-red-600 mt-1">{{ error }}</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] gap-6">
+        <div class="space-y-4">
+            <div>
+                <div class="flex items-center justify-between gap-3">
+                    <label for="content" class="block text-sm font-medium text-slate-700">内容</label>
+                    <p class="text-xs text-slate-500">支持 Markdown，图片可选文件、粘贴或拖拽上传。</p>
+                </div>
+                <div id="editor-drop-zone" class="mt-1 rounded-lg border border-slate-300 transition">
+                    {{ form.content(
+                        id='content',
+                        rows='18',
+                        class='block w-full px-3 py-3 border-0 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[26rem]',
+                        placeholder='支持 Markdown 语法，可直接粘贴截图或把图片拖进来...'
+                    ) }}
+                </div>
+                <p class="text-xs text-slate-500 mt-2">上传后会自动插入图片；在右侧预览中点击图片可以调整宽度和说明。</p>
+                {% for error in form.content.errors %}
+                    <p class="text-sm text-red-600 mt-1">{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <div class="border border-slate-200 rounded-lg p-4 bg-slate-50 space-y-3">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="image-upload-input" class="block text-sm font-medium text-slate-700">插入图片</label>
+                        <input id="image-upload-input" type="file" accept=".png,.jpg,.jpeg,.gif,.webp,image/png,image/jpeg,image/gif,image/webp" class="mt-1 block w-full text-sm text-slate-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                    </div>
+                    <div>
+                        <label for="image-alt-input" class="block text-sm font-medium text-slate-700">图片说明</label>
+                        <input id="image-alt-input" type="text" placeholder="可选，会写入图片 alt 文本" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <button type="button" id="upload-image-button" class="inline-flex items-center justify-center bg-slate-800 text-white py-2 px-4 rounded-md hover:bg-slate-900 transition">
+                        上传并插入正文
+                    </button>
+                    <p id="image-upload-status" class="text-sm text-slate-500" aria-live="polite">
+                        支持 PNG、JPG、JPEG、GIF、WEBP，也支持直接粘贴截图或拖拽图片。
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-4">
+            <section class="border border-slate-200 rounded-xl overflow-hidden bg-white">
+                <div class="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-sm font-semibold text-slate-800">实时预览</h2>
+                        <p class="text-xs text-slate-500">与文章页使用同一套服务端 Markdown 渲染。</p>
+                    </div>
+                    <span id="preview-status" class="text-xs text-slate-400">待更新</span>
+                </div>
+                <div id="preview-panel" class="p-5 min-h-[22rem] max-h-[42rem] overflow-y-auto bg-white prose max-w-none">
+                    <p class="text-slate-400">输入内容后会在这里实时预览。</p>
+                </div>
+            </section>
+
+            <section id="image-controls" class="border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-4 hidden">
+                <div>
+                    <h2 class="text-sm font-semibold text-slate-800">图片设置</h2>
+                    <p class="text-xs text-slate-500 mt-1">在右侧预览中点击一张图片后，可直接调整宽度和说明。</p>
+                </div>
+                <div>
+                    <label for="selected-image-alt" class="block text-sm font-medium text-slate-700">说明</label>
+                    <input id="selected-image-alt" type="text" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                    <div class="flex items-center justify-between gap-3">
+                        <label for="selected-image-width" class="block text-sm font-medium text-slate-700">宽度</label>
+                        <span id="selected-image-width-value" class="text-sm text-slate-500">100%</span>
+                    </div>
+                    <input id="selected-image-width" type="range" min="20" max="100" step="5" value="100" class="mt-2 w-full accent-indigo-600">
+                </div>
+                <button type="button" id="image-controls-reset" class="inline-flex items-center justify-center border border-slate-300 bg-white text-slate-700 py-2 px-4 rounded-md hover:bg-slate-100 transition">
+                    取消选中
+                </button>
+            </section>
+        </div>
+    </div>
+
+    <div>
+        <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition">{{ submit_label }}</button>
+    </div>
+</form>
+
+<script>
+    (function() {
+        const formEl = document.querySelector('form[data-upload-url][data-preview-url]');
+        const contentInput = document.getElementById('content');
+        const dropZone = document.getElementById('editor-drop-zone');
+        const previewPanel = document.getElementById('preview-panel');
+        const previewStatus = document.getElementById('preview-status');
+        const imageControls = document.getElementById('image-controls');
+        const selectedImageAltInput = document.getElementById('selected-image-alt');
+        const selectedImageWidthInput = document.getElementById('selected-image-width');
+        const selectedImageWidthValue = document.getElementById('selected-image-width-value');
+        const imageControlsReset = document.getElementById('image-controls-reset');
+        const container = document.getElementById('selected-tags');
+        const textInput = document.getElementById('tag-text-input');
+        const hiddenInput = document.getElementById('tags-input');
+        const suggestionsDiv = document.getElementById('tag-suggestions');
+        const imageInput = document.getElementById('image-upload-input');
+        const imageAltInput = document.getElementById('image-alt-input');
+        const uploadButton = document.getElementById('upload-image-button');
+        const uploadStatus = document.getElementById('image-upload-status');
+        const csrfInput = formEl.querySelector('input[name="csrf_token"]');
+        let selectedTags = [];
+        let allTags = [];
+        let previewTimer = null;
+        let previewRequestId = 0;
+        let selectedImageIndex = null;
+
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function setUploadStatus(message, tone) {
+            uploadStatus.textContent = message;
+            uploadStatus.className = 'text-sm';
+            if (tone === 'error') {
+                uploadStatus.classList.add('text-red-600');
+            } else if (tone === 'success') {
+                uploadStatus.classList.add('text-emerald-600');
+            } else {
+                uploadStatus.classList.add('text-slate-500');
+            }
+        }
+
+        function setPreviewStatus(message, tone) {
+            previewStatus.textContent = message;
+            previewStatus.className = 'text-xs';
+            if (tone === 'error') {
+                previewStatus.classList.add('text-red-500');
+            } else if (tone === 'success') {
+                previewStatus.classList.add('text-emerald-600');
+            } else {
+                previewStatus.classList.add('text-slate-400');
+            }
+        }
+
+        function syncHidden() {
+            hiddenInput.value = selectedTags.join(', ');
+        }
+
+        function renderTags() {
+            container.querySelectorAll('.tag-pill').forEach((el) => el.remove());
+            selectedTags.forEach((tag) => {
+                const pill = document.createElement('span');
+                pill.className = 'tag-pill bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs flex items-center gap-1';
+                pill.innerHTML = `${escapeHtml(tag)}<button type="button" class="text-indigo-600 hover:text-indigo-800 ml-1 font-bold">&times;</button>`;
+                pill.querySelector('button').addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    removeTag(tag);
+                });
+                container.insertBefore(pill, textInput);
+            });
+        }
+
+        function addTag(tag) {
+            const normalized = tag.trim();
+            if (!normalized || selectedTags.includes(normalized)) {
+                return;
+            }
+            selectedTags.push(normalized);
+            renderTags();
+            syncHidden();
+            textInput.value = '';
+            hideSuggestions();
+        }
+
+        function removeTag(tag) {
+            selectedTags = selectedTags.filter((item) => item !== tag);
+            renderTags();
+            syncHidden();
+        }
+
+        function showSuggestions(filter) {
+            const lower = filter.toLowerCase();
+            const matches = allTags.filter((tag) => (
+                tag.toLowerCase().includes(lower) && !selectedTags.includes(tag)
+            )).slice(0, 10);
+
+            if (!matches.length) {
+                hideSuggestions();
+                return;
+            }
+
+            suggestionsDiv.innerHTML = matches.map((tag) => (
+                `<div class="px-3 py-2 text-sm cursor-pointer hover:bg-indigo-50 hover:text-indigo-700 transition">${escapeHtml(tag)}</div>`
+            )).join('');
+
+            suggestionsDiv.querySelectorAll('div').forEach((el, index) => {
+                el.addEventListener('mousedown', (event) => {
+                    event.preventDefault();
+                    addTag(matches[index]);
+                });
+            });
+
+            suggestionsDiv.classList.remove('hidden');
+        }
+
+        function hideSuggestions() {
+            suggestionsDiv.classList.add('hidden');
+        }
+
+        function insertMarkdownAtCursor(markdownText) {
+            const start = contentInput.selectionStart ?? contentInput.value.length;
+            const end = contentInput.selectionEnd ?? contentInput.value.length;
+            const before = contentInput.value.slice(0, start);
+            const after = contentInput.value.slice(end);
+            const prefix = before && !before.endsWith('\n') ? '\n' : '';
+            const suffix = after && !after.startsWith('\n') ? '\n' : '';
+            const snippet = `${prefix}${markdownText}${suffix}`;
+
+            contentInput.value = `${before}${snippet}${after}`;
+            const cursor = before.length + snippet.length;
+            contentInput.focus();
+            contentInput.setSelectionRange(cursor, cursor);
+            schedulePreview();
+        }
+
+        function escapeAttribute(value) {
+            return String(value || '').replace(/"/g, '&quot;');
+        }
+
+        function buildHtmlImage(url, altText, width) {
+            const safeWidth = Math.max(20, Math.min(100, Number(width) || 100));
+            const alt = escapeAttribute((altText || 'image').trim() || 'image');
+            const src = escapeAttribute(url);
+            return `<img src="${src}" alt="${alt}" width="${safeWidth}%">`;
+        }
+
+        function parseEditorImages(text) {
+            const tokens = [];
+            const regex = /<img\b[^>]*\bsrc=(["'])(.*?)\1[^>]*>|!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/gi;
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const raw = match[0];
+                const isHtml = raw.trim().startsWith('<img');
+                let src = '';
+                let alt = '';
+                let width = 100;
+
+                if (isHtml) {
+                    src = match[2] || '';
+                    const altMatch = raw.match(/\balt=(["'])(.*?)\1/i);
+                    const widthMatch = raw.match(/\bwidth=(["']?)(\d+)%?\1/i);
+                    alt = altMatch ? altMatch[2] : '';
+                    width = widthMatch ? Number(widthMatch[2]) : 100;
+                } else {
+                    alt = match[3] || '';
+                    src = match[4] || '';
+                }
+
+                tokens.push({
+                    start: match.index,
+                    end: match.index + raw.length,
+                    src,
+                    alt,
+                    width,
+                    raw,
+                });
+            }
+            return tokens;
+        }
+
+        function replaceImageTokenAtIndex(index, replacement) {
+            const tokens = parseEditorImages(contentInput.value);
+            const token = tokens[index];
+            if (!token) {
+                clearSelectedImage();
+                return;
+            }
+            contentInput.value = `${contentInput.value.slice(0, token.start)}${replacement}${contentInput.value.slice(token.end)}`;
+            schedulePreview();
+        }
+
+        function highlightSelectedPreviewImage() {
+            previewPanel.querySelectorAll('img').forEach((img, index) => {
+                if (index === selectedImageIndex) {
+                    img.classList.add('ring-4', 'ring-indigo-300', 'rounded-lg');
+                } else {
+                    img.classList.remove('ring-4', 'ring-indigo-300', 'rounded-lg');
+                }
+            });
+        }
+
+        function clearSelectedImage() {
+            selectedImageIndex = null;
+            imageControls.classList.add('hidden');
+            highlightSelectedPreviewImage();
+        }
+
+        function selectImage(index) {
+            const tokens = parseEditorImages(contentInput.value);
+            const token = tokens[index];
+            if (!token) {
+                clearSelectedImage();
+                return;
+            }
+            selectedImageIndex = index;
+            selectedImageAltInput.value = token.alt || '';
+            selectedImageWidthInput.value = String(token.width || 100);
+            selectedImageWidthValue.textContent = `${token.width || 100}%`;
+            imageControls.classList.remove('hidden');
+            highlightSelectedPreviewImage();
+        }
+
+        async function renderPreview() {
+            const requestId = ++previewRequestId;
+            const content = contentInput.value.trim();
+
+            if (!content) {
+                previewPanel.innerHTML = '<p class="text-slate-400">输入内容后会在这里实时预览。</p>';
+                setPreviewStatus('待更新', 'muted');
+                clearSelectedImage();
+                return;
+            }
+
+            setPreviewStatus('渲染中...', 'muted');
+
+            try {
+                const formData = new FormData();
+                formData.append('content', contentInput.value);
+                const response = await fetch(formEl.dataset.previewUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfInput.value,
+                    },
+                    body: formData,
+                });
+                const payload = await response.json().catch(() => ({}));
+
+                if (requestId !== previewRequestId) {
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(payload.error || '预览渲染失败。');
+                }
+
+                previewPanel.innerHTML = payload.html || '<p class="text-slate-400">暂无可预览内容。</p>';
+                previewPanel.querySelectorAll('img').forEach((img, index) => {
+                    img.classList.add('cursor-pointer', 'transition');
+                    img.addEventListener('click', () => selectImage(index));
+                });
+                if (selectedImageIndex !== null) {
+                    const tokens = parseEditorImages(contentInput.value);
+                    if (tokens[selectedImageIndex]) {
+                        highlightSelectedPreviewImage();
+                    } else {
+                        clearSelectedImage();
+                    }
+                }
+                setPreviewStatus('已同步', 'success');
+            } catch (error) {
+                if (requestId !== previewRequestId) {
+                    return;
+                }
+                setPreviewStatus(error.message || '预览渲染失败。', 'error');
+            }
+        }
+
+        function schedulePreview() {
+            window.clearTimeout(previewTimer);
+            previewTimer = window.setTimeout(renderPreview, 250);
+        }
+
+        async function uploadImageFile(file, altText) {
+            if (!file) {
+                throw new Error('请先选择一张图片。');
+            }
+
+            const formData = new FormData();
+            formData.append('image', file);
+            formData.append('alt', (altText || '').trim());
+
+            const response = await fetch(formEl.dataset.uploadUrl, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfInput.value,
+                },
+                body: formData,
+            });
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(payload.error || '上传失败，请稍后重试。');
+            }
+
+            const markdown = payload.html || buildHtmlImage(payload.url, payload.alt || altText || '', 100);
+            insertMarkdownAtCursor(markdown);
+            return payload;
+        }
+
+        async function handleFiles(files) {
+            const imageFiles = Array.from(files || []).filter((file) => file.type.startsWith('image/'));
+            if (!imageFiles.length) {
+                setUploadStatus('仅支持拖入或粘贴图片文件。', 'error');
+                return;
+            }
+
+            uploadButton.disabled = true;
+            setUploadStatus(`正在上传 ${imageFiles.length} 张图片...`, 'muted');
+
+            try {
+                for (const file of imageFiles) {
+                    const defaultAlt = imageAltInput.value.trim() || file.name.replace(/\.[^.]+$/, '');
+                    await uploadImageFile(file, defaultAlt);
+                }
+                imageInput.value = '';
+                imageAltInput.value = '';
+                setUploadStatus('图片已上传并插入正文。', 'success');
+            } catch (error) {
+                setUploadStatus(error.message || '上传失败，请稍后重试。', 'error');
+            } finally {
+                uploadButton.disabled = false;
+            }
+        }
+
+        const initial = (hiddenInput.value || '').trim();
+        if (initial) {
+            initial.split(',').forEach((tag) => {
+                const normalized = tag.trim();
+                if (normalized) {
+                    selectedTags.push(normalized);
+                }
+            });
+            renderTags();
+            syncHidden();
+        }
+
+        fetch('{{ url_for("blog.api_tags") }}')
+            .then((response) => response.json())
+            .then((tags) => {
+                allTags = tags;
+            })
+            .catch(() => {});
+
+        textInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ',') {
+                event.preventDefault();
+                addTag(textInput.value);
+            }
+            if (event.key === 'Backspace' && !textInput.value && selectedTags.length) {
+                removeTag(selectedTags[selectedTags.length - 1]);
+            }
+        });
+
+        textInput.addEventListener('input', () => {
+            const value = textInput.value.trim();
+            if (value) {
+                showSuggestions(value);
+            } else {
+                hideSuggestions();
+            }
+        });
+
+        textInput.addEventListener('blur', () => {
+            window.setTimeout(hideSuggestions, 150);
+        });
+
+        textInput.addEventListener('focus', () => {
+            const value = textInput.value.trim();
+            if (value) {
+                showSuggestions(value);
+            }
+        });
+
+        uploadButton.addEventListener('click', async () => {
+            const file = imageInput.files[0];
+            if (!file) {
+                setUploadStatus('请先选择一张图片。', 'error');
+                return;
+            }
+
+            uploadButton.disabled = true;
+            setUploadStatus('图片上传中...', 'muted');
+
+            try {
+                await uploadImageFile(file, imageAltInput.value.trim());
+                imageInput.value = '';
+                imageAltInput.value = '';
+                setUploadStatus('图片已上传并插入正文。', 'success');
+            } catch (error) {
+                setUploadStatus(error.message || '上传失败，请稍后重试。', 'error');
+            } finally {
+                uploadButton.disabled = false;
+            }
+        });
+
+        contentInput.addEventListener('input', schedulePreview);
+
+        contentInput.addEventListener('paste', async (event) => {
+            const files = Array.from(event.clipboardData?.items || [])
+                .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+                .map((item) => item.getAsFile())
+                .filter(Boolean);
+
+            if (!files.length) {
+                return;
+            }
+
+            event.preventDefault();
+            await handleFiles(files);
+        });
+
+        ['dragenter', 'dragover'].forEach((eventName) => {
+            dropZone.addEventListener(eventName, (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                dropZone.classList.add('border-indigo-500', 'bg-indigo-50');
+            });
+        });
+
+        ['dragleave', 'dragend', 'drop'].forEach((eventName) => {
+            dropZone.addEventListener(eventName, (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                dropZone.classList.remove('border-indigo-500', 'bg-indigo-50');
+            });
+        });
+
+        dropZone.addEventListener('drop', async (event) => {
+            const files = event.dataTransfer?.files;
+            if (files?.length) {
+                await handleFiles(files);
+            }
+        });
+
+        selectedImageAltInput.addEventListener('input', () => {
+            if (selectedImageIndex === null) {
+                return;
+            }
+            const width = Number(selectedImageWidthInput.value) || 100;
+            const tokens = parseEditorImages(contentInput.value);
+            const token = tokens[selectedImageIndex];
+            if (!token) {
+                clearSelectedImage();
+                return;
+            }
+            replaceImageTokenAtIndex(selectedImageIndex, buildHtmlImage(token.src, selectedImageAltInput.value, width));
+        });
+
+        selectedImageWidthInput.addEventListener('input', () => {
+            if (selectedImageIndex === null) {
+                return;
+            }
+            const width = Number(selectedImageWidthInput.value) || 100;
+            selectedImageWidthValue.textContent = `${width}%`;
+            const tokens = parseEditorImages(contentInput.value);
+            const token = tokens[selectedImageIndex];
+            if (!token) {
+                clearSelectedImage();
+                return;
+            }
+            replaceImageTokenAtIndex(selectedImageIndex, buildHtmlImage(token.src, selectedImageAltInput.value || token.alt, width));
+        });
+
+        imageControlsReset.addEventListener('click', clearSelectedImage);
+
+        schedulePreview();
+    })();
+</script>
